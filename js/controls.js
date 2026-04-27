@@ -21,7 +21,7 @@ export function createControls(camera) {
 
     function updateCamera() {
         const dir = getDirection();
-        const right = new THREE.Vector3(Math.cos(camYaw), 0, -Math.sin(camYaw));
+        const right = new THREE.Vector3(-Math.cos(camYaw), 0, Math.sin(camYaw));
 
         if (keys.w || keys.W || keys.ArrowUp) camPos.addScaledVector(dir, CAM_SPEED);
         if (keys.s || keys.S || keys.ArrowDown) camPos.addScaledVector(dir, -CAM_SPEED);

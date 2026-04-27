@@ -19,7 +19,7 @@
 }
 
 body {
-    background: radial-gradient(circle at 50% 10%, rgba(255, 76, 166, 0.08), transparent 30%), var(--bg);
+    background: var(--bg);
     color: var(--text);
     font-family: "NType82", monospace;
     overflow: hidden;
@@ -36,8 +36,7 @@ canvas {
     z-index: 0;
     pointer-events: none;
     background:
-        radial-gradient(circle at 60% 18%, rgba(255, 0, 200, 0.06), transparent 30%),
-        radial-gradient(circle at 25% 70%, rgba(255, 210, 160, 0.05), transparent 36%),
+        radial-gradient(circle at 25% 70%, rgba(255, 210, 160, 0.04), transparent 36%),
         radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.03), transparent 42%);
 }
 
@@ -58,9 +57,9 @@ canvas {
     inset: 0;
     z-index: 2;
     pointer-events: none;
-    background-image: radial-gradient(circle, rgba(255,255,255,.5) 1px, transparent 1px);
-    background-size: 88px 88px;
-    opacity: .14;
+    background-image: radial-gradient(circle, rgba(255,255,255,.82) 1px, transparent 1px);
+    background-size: 72px 72px;
+    opacity: .28;
 }
 
 @keyframes grainMove {
