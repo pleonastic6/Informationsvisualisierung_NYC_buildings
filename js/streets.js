@@ -1,12 +1,12 @@
 const THREE = window.THREE;
 
 const STREET_COLORS = {
-    m: 0x4a7fff,
-    t: 0x3a6fef,
-    p: 0x2055cc,
-    s: 0x163a7a,
-    e: 0x0f2550,
-    r: 0x0a1a38
+    m: 0xf08cc5,
+    t: 0xd56aa8,
+    p: 0xb6538f,
+    s: 0x8d436f,
+    e: 0x5f304c,
+    r: 0x311826
 };
 
 export function buildStreets(scene, data) {
@@ -31,7 +31,7 @@ export function buildStreets(scene, data) {
         if (points.length === 0) continue;
 
         const geometry = new THREE.BufferGeometry().setFromPoints(points);
-        const opacity = type === 'r' ? 0.3 : type === 'e' ? 0.45 : 0.7;
+        const opacity = type === 'r' ? 0.2 : type === 'e' ? 0.3 : type === 's' ? 0.42 : 0.58;
         const material = new THREE.LineBasicMaterial({
             color: STREET_COLORS[type] || 0x1a3a6a,
             opacity,
