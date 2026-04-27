@@ -146,6 +146,15 @@ export function createControls(camera) {
         updateCamera,
         transitionToView(view) {
             startCinematic(view);
+        },
+        getDebugState() {
+            return {
+                x: camPos.x,
+                y: camPos.y,
+                z: camPos.z,
+                yaw: camYaw,
+                pitch: camPitch
+            };
         }
     };
 }
