@@ -3,13 +3,33 @@ const THREE = window.THREE;
 const CAM_SPEED = 1.5;
 const CAM_SENSITIVITY = 0.003;
 
+const MAP_VIEW = {
+    pos: new THREE.Vector3(28, 150, -190),
+    target: new THREE.Vector3(0, 12, -540)
+};
+
+const RANKING_VIEW = {
+    pos: new THREE.Vector3(0, 125, 245),
+    target: new THREE.Vector3(0, 16, 0)
+};
+
+function anglesFromLookAt(position, target) {
+    const dir = target.clone().sub(position).normalize();
+    return {
+        yaw: Math.atan2(dir.x, dir.z),
+        pitch: Math.asin(-dir.y)
+    };
+}
+
 export function createControls(camera) {
     const keys = {};
     let mouseDown = false;
     let lastMouse = { x: 0, y: 0 };
-    let camYaw = -0.12;
-    let camPitch = 0.92;
-    const camPos = new THREE.Vector3(-8, 115, 360);
+
+    const initialAngles = anglesFromLookAt(MAP_VIEW.pos, MAP_VIEW.target);
+    let camYaw = initialAngles.yaw;
+    let camPitch = initialAngles.pitch;
+    const camPos = MAP_VIEW.pos.clone();
 
     let cinematicActive = false;
     const cinematicFrom = {
@@ -29,13 +49,16 @@ export function createControls(camera) {
         cinematicProgress = 1;
     }
 
-    function startCinematic(target) {
+    function startCinematic(view) {
+        const targetView = view === 'ranking' ? RANKING_VIEW : MAP_VIEW;
+        const angles = anglesFromLookAt(targetView.pos, targetView.target);
+
         cinematicFrom.pos.copy(camPos);
         cinematicFrom.yaw = camYaw;
         cinematicFrom.pitch = camPitch;
-        cinematicTo.pos.copy(target.pos);
-        cinematicTo.yaw = target.yaw;
-        cinematicTo.pitch = target.pitch;
+        cinematicTo.pos.copy(targetView.pos);
+        cinematicTo.yaw = angles.yaw;
+        cinematicTo.pitch = angles.pitch;
         cinematicProgress = 0;
         cinematicActive = true;
     }
@@ -122,20 +145,7 @@ export function createControls(camera) {
     return {
         updateCamera,
         transitionToView(view) {
-            if (view === 'ranking') {
-                startCinematic({
-                    pos: new THREE.Vector3(0, 125, 245),
-                    yaw: 0,
-                    pitch: 0.88
-                });
-                return;
-            }
-
-            startCinematic({
-                pos: new THREE.Vector3(-8, 115, 360),
-                yaw: -0.12,
-                pitch: 0.92
-            });
+            startCinematic(view);
         }
     };
 }
