@@ -9,6 +9,15 @@ export const ERA_COLORS = [
     new THREE.Color(0x8b1ac4)
 ];
 
+export const ERA_LABELS = [
+    'Unbekannt',
+    'Vor 1900',
+    '1900–1939',
+    '1940–1969',
+    '1970–1999',
+    '2000+'
+];
+
 export function heightColor(t) {
     const c = new THREE.Color();
     if (t < 0.2) {

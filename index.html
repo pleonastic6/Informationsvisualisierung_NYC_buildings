@@ -38,6 +38,12 @@
     <button class="mode-btn" data-mode="ground">Meereshöhe</button>
 </div>
 
+<!-- View Bar -->
+<div id="view-bar">
+    <button class="view-btn active" data-view="map">Map</button>
+    <button class="view-btn" data-view="ranking">Top 100 Radial</button>
+</div>
+
 <!-- Legend -->
 <div id="legend">
     <div id="height-legend">
@@ -70,6 +76,8 @@
     <div class="ctrl">Maus halten — Drehen</div>
     <div class="ctrl">Scroll — Zoom</div>
 </div>
+
+<div id="hover-tooltip"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script type="module" src="main.js"></script>
