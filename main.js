@@ -50,15 +50,6 @@ const { scene, camera, renderer } = createScene();
 const controls = createControls(camera);
 const rankingLabels = createRankingLabelController({ camera, getState: () => state });
 
-function updateCameraDebug() {
-    const debug = controls.getDebugState();
-    document.getElementById('dbg-x').textContent = debug.x.toFixed(2);
-    document.getElementById('dbg-y').textContent = debug.y.toFixed(2);
-    document.getElementById('dbg-z').textContent = debug.z.toFixed(2);
-    document.getElementById('dbg-yaw').textContent = debug.yaw.toFixed(3);
-    document.getElementById('dbg-pitch').textContent = debug.pitch.toFixed(3);
-}
-
 function updateVisibleStats() {
     const stats = state.viewMode === 'ranking' ? state.rankingStats : state.allStats;
     if (!stats) return;
@@ -218,7 +209,6 @@ createHoverController({
 function animate() {
     requestAnimationFrame(animate);
     controls.updateCamera();
-    updateCameraDebug();
     updateViewTransition();
     rankingLabels.update();
     renderer.render(scene, camera);
