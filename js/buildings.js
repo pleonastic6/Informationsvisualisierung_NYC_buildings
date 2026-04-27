@@ -169,7 +169,11 @@ export async function buildBuildings({ scene, buildings, maxHeight, minGround, m
     mergedGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
     mergedGeometry.setIndex(new THREE.BufferAttribute(indices, 1));
 
-    const mesh = new THREE.Mesh(mergedGeometry, new THREE.MeshLambertMaterial({ vertexColors: true }));
+    const mesh = new THREE.Mesh(mergedGeometry, new THREE.MeshStandardMaterial({
+        vertexColors: true,
+        roughness: 0.86,
+        metalness: 0.12
+    }));
     scene.add(mesh);
 
     return {
@@ -196,7 +200,11 @@ export function buildRankingView({ scene, buildings, maxHeight, minGround, maxGr
         const paletteSet = createPaletteSet(building, maxHeight, minGround, maxGround, geometry.attributes.position.count);
         geometry.setAttribute('color', new THREE.BufferAttribute(paletteSet.height.slice(), 3));
 
-        const mesh = new THREE.Mesh(geometry, new THREE.MeshLambertMaterial({ vertexColors: true }));
+        const mesh = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({
+            vertexColors: true,
+            roughness: 0.84,
+            metalness: 0.1
+        }));
         const column = index % GRID_COLUMNS;
         const row = Math.floor(index / GRID_COLUMNS);
 
