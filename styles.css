@@ -30,11 +30,50 @@ canvas {
     display: block;
 }
 
+.bg {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background:
+        radial-gradient(circle at 60% 18%, rgba(255, 0, 200, 0.06), transparent 30%),
+        radial-gradient(circle at 25% 70%, rgba(255, 210, 160, 0.05), transparent 36%),
+        radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.03), transparent 42%);
+}
+
+.grain {
+    position: fixed;
+    inset: -10%;
+    z-index: 1;
+    pointer-events: none;
+    opacity: .03;
+    mix-blend-mode: overlay;
+    background-image: radial-gradient(circle, rgba(255,255,255,.12) 1px, transparent 1px);
+    background-size: 5px 5px;
+    animation: grainMove 10s steps(2) infinite;
+}
+
+.dots {
+    position: fixed;
+    inset: 0;
+    z-index: 2;
+    pointer-events: none;
+    background-image: radial-gradient(circle, rgba(255,255,255,.5) 1px, transparent 1px);
+    background-size: 88px 88px;
+    opacity: .14;
+}
+
+@keyframes grainMove {
+    from { transform: translate(0, 0); }
+    to { transform: translate(-6px, -6px); }
+}
+
 /* ── Loading Screen ── */
 #loading {
     position: fixed;
     inset: 0;
-    background: var(--bg);
+    background: rgba(7, 8, 15, 0.88);
+    backdrop-filter: blur(12px);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -44,12 +83,12 @@ canvas {
 }
 
 #loading-title {
-    font-family: 'DM Sans', sans-serif;
-    font-weight: 200;
+    font-family: "Ndot-55", sans-serif;
     font-size: 28px;
     letter-spacing: .3em;
     text-transform: uppercase;
     margin-bottom: 6px;
+    text-shadow: 0 0 20px rgba(255, 76, 166, 0.2);
 }
 
 #loading-sub {
@@ -77,6 +116,22 @@ canvas {
     font-size: 9px;
     letter-spacing: .25em;
     color: var(--muted);
+}
+
+#loading-bar-wrap,
+#loading-title,
+#loading-sub,
+#loading-msg,
+#hud-tl,
+#hud-tr,
+#mode-bar,
+#view-bar,
+#legend,
+#filter-panel,
+#controls,
+#hover-tooltip {
+    position: relative;
+    z-index: 5;
 }
 
 /* ── HUD Top Left ── */

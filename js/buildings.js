@@ -3,9 +3,8 @@ const THREE = window.THREE;
 import { ERA_COLORS, ERA_LABELS, groundColor, heightColor } from './colors.js';
 
 const RANKING_LIMIT = 100;
-const RING_SIZE = 25;
-const BASE_RADIUS = 110;
-const RING_GAP = 125;
+const GRID_COLUMNS = 10;
+const GRID_SPACING = 36;
 
 function createShape(points, centerX = 0, centerZ = 0) {
     const shape = new THREE.Shape();
@@ -188,20 +187,21 @@ export function buildRankingView({ scene, buildings, maxHeight, minGround, maxGr
         .sort((a, b) => b.h - a.h)
         .slice(0, RANKING_LIMIT);
 
+    const rowCount = Math.ceil(topBuildings.length / GRID_COLUMNS);
+    const xOffset = ((GRID_COLUMNS - 1) * GRID_SPACING) / 2;
+    const zOffset = ((rowCount - 1) * GRID_SPACING) / 2;
+
     const items = topBuildings.map((building, index) => {
         const geometry = buildGeometry(building, { centered: true });
         const paletteSet = createPaletteSet(building, maxHeight, minGround, maxGround, geometry.attributes.position.count);
         geometry.setAttribute('color', new THREE.BufferAttribute(paletteSet.height.slice(), 3));
 
         const mesh = new THREE.Mesh(geometry, new THREE.MeshLambertMaterial({ vertexColors: true }));
-        const ringIndex = Math.floor(index / RING_SIZE);
-        const positionInRing = index % RING_SIZE;
-        const ringCount = Math.min(RING_SIZE, topBuildings.length - ringIndex * RING_SIZE);
-        const angle = (-Math.PI / 2) + (positionInRing / ringCount) * Math.PI * 2;
-        const radius = BASE_RADIUS + ringIndex * RING_GAP;
+        const column = index % GRID_COLUMNS;
+        const row = Math.floor(index / GRID_COLUMNS);
 
-        mesh.position.set(Math.cos(angle) * radius, 0, Math.sin(angle) * radius);
-        mesh.rotation.y = -angle + Math.PI / 2;
+        mesh.position.set(column * GRID_SPACING - xOffset, 0, row * GRID_SPACING - zOffset);
+        mesh.rotation.y = 0;
         mesh.userData.meta = describeBuilding(building, index + 1);
         group.add(mesh);
 
