@@ -4,8 +4,9 @@ const CAM_SPEED = 1.5;
 const CAM_SENSITIVITY = 0.003;
 
 const MAP_VIEW = {
-    pos: new THREE.Vector3(28, 150, -190),
-    target: new THREE.Vector3(0, 12, -540)
+    pos: new THREE.Vector3(-188.2, 38.92, 583.6),
+    yaw: -3.341,
+    pitch: 0.104
 };
 
 const RANKING_VIEW = {
@@ -26,9 +27,8 @@ export function createControls(camera) {
     let mouseDown = false;
     let lastMouse = { x: 0, y: 0 };
 
-    const initialAngles = anglesFromLookAt(MAP_VIEW.pos, MAP_VIEW.target);
-    let camYaw = initialAngles.yaw;
-    let camPitch = initialAngles.pitch;
+    let camYaw = MAP_VIEW.yaw;
+    let camPitch = MAP_VIEW.pitch;
     const camPos = MAP_VIEW.pos.clone();
 
     let cinematicActive = false;
@@ -51,7 +51,7 @@ export function createControls(camera) {
 
     function startCinematic(view) {
         const targetView = view === 'ranking' ? RANKING_VIEW : MAP_VIEW;
-        const angles = anglesFromLookAt(targetView.pos, targetView.target);
+        const angles = targetView.target ? anglesFromLookAt(targetView.pos, targetView.target) : { yaw: targetView.yaw, pitch: targetView.pitch };
 
         cinematicFrom.pos.copy(camPos);
         cinematicFrom.yaw = camYaw;
