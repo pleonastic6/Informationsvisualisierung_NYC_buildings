@@ -33,9 +33,9 @@
 
 <!-- Mode Bar -->
 <div id="mode-bar">
-    <button class="mode-btn active" onclick="setMode('height')">Höhe</button>
-    <button class="mode-btn" onclick="setMode('era')">Baujahr</button>
-    <button class="mode-btn" onclick="setMode('ground')">Meereshöhe</button>
+    <button class="mode-btn active" data-mode="height">Höhe</button>
+    <button class="mode-btn" data-mode="era">Baujahr</button>
+    <button class="mode-btn" data-mode="ground">Meereshöhe</button>
 </div>
 
 <!-- Legend -->
@@ -59,7 +59,7 @@
 <!-- Filter Panel -->
 <div id="filter-panel">
     <span class="filter-label">Min. Höhe</span>
-    <input type="range" id="height-filter" min="0" max="400" value="0" oninput="applyHeightFilter(this.value)"/>
+    <input type="range" id="height-filter" min="0" max="400" value="0"/>
     <span id="filter-val">0 m</span>
 </div>
 
@@ -72,7 +72,7 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="main.js"></script>
+<script type="module" src="main.js"></script>
 
 </body>
 </html>
