@@ -5,6 +5,7 @@ import { ERA_COLORS, ERA_LABELS, groundColor, heightColor } from './colors.js';
 const RANKING_LIMIT = 100;
 const GRID_COLUMNS = 10;
 const GRID_SPACING = 36;
+const MAP_HIGHLIGHT = new THREE.Color(0xffb3dc);
 
 function createShape(points, centerX = 0, centerZ = 0) {
     const shape = new THREE.Shape();
@@ -74,6 +75,15 @@ function describeBuilding(building, rank = null) {
         era: building.era,
         eraLabel: ERA_LABELS[building.era] ?? ERA_LABELS[0]
     };
+}
+
+function applySourceColorToMeta(target, sourceColors, meta) {
+    for (let vertex = 0; vertex < meta.vertexCount; vertex++) {
+        const base = (meta.vertexStart + vertex) * 3;
+        target[base] = sourceColors[base];
+        target[base + 1] = sourceColors[base + 1];
+        target[base + 2] = sourceColors[base + 2];
+    }
 }
 
 export async function buildBuildings({ scene, buildings, maxHeight, minGround, maxGround, setProgress }) {
@@ -172,7 +182,9 @@ export async function buildBuildings({ scene, buildings, maxHeight, minGround, m
     const mesh = new THREE.Mesh(mergedGeometry, new THREE.MeshStandardMaterial({
         vertexColors: true,
         roughness: 0.86,
-        metalness: 0.12
+        metalness: 0.12,
+        transparent: true,
+        opacity: 1
     }));
     scene.add(mesh);
 
@@ -203,7 +215,10 @@ export function buildRankingView({ scene, buildings, maxHeight, minGround, maxGr
         const mesh = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({
             vertexColors: true,
             roughness: 0.84,
-            metalness: 0.1
+            metalness: 0.1,
+            emissive: new THREE.Color(0x000000),
+            transparent: true,
+            opacity: 1
         }));
         const column = index % GRID_COLUMNS;
         const row = Math.floor(index / GRID_COLUMNS);
@@ -230,14 +245,7 @@ export function applyBuildingColors({ mesh, buildingMeta, sourceColors }) {
     const colorAttribute = mesh.geometry.attributes.color;
     const target = colorAttribute.array;
 
-    for (const meta of buildingMeta) {
-        for (let vertex = 0; vertex < meta.vertexCount; vertex++) {
-            const targetBase = (meta.vertexStart + vertex) * 3;
-            target[targetBase] = sourceColors[targetBase];
-            target[targetBase + 1] = sourceColors[targetBase + 1];
-            target[targetBase + 2] = sourceColors[targetBase + 2];
-        }
-    }
+    for (const meta of buildingMeta) applySourceColorToMeta(target, sourceColors, meta);
 
     colorAttribute.needsUpdate = true;
 }
@@ -250,17 +258,15 @@ export function applyHeightFilter({ mesh, buildingMeta, minHeight, sourceColors 
 
     for (const meta of buildingMeta) {
         const hide = meta.height < minHeight;
-        for (let vertex = 0; vertex < meta.vertexCount; vertex++) {
-            const base = (meta.vertexStart + vertex) * 3;
-            if (hide) {
+        if (hide) {
+            for (let vertex = 0; vertex < meta.vertexCount; vertex++) {
+                const base = (meta.vertexStart + vertex) * 3;
                 target[base] = 0;
                 target[base + 1] = 0;
                 target[base + 2] = 0;
-            } else {
-                target[base] = sourceColors[base];
-                target[base + 1] = sourceColors[base + 1];
-                target[base + 2] = sourceColors[base + 2];
             }
+        } else {
+            applySourceColorToMeta(target, sourceColors, meta);
         }
     }
 
@@ -289,6 +295,51 @@ export function updateRankingView({ rankingItems, mode, minHeight }) {
         colorAttribute.needsUpdate = true;
         item.mesh.visible = !hide;
     }
+}
+
+export function setMapHighlight({ mesh, meta, sourceColors, minHeight, active }) {
+    if (!mesh || !meta) return;
+
+    const colorAttribute = mesh.geometry.attributes.color;
+    const target = colorAttribute.array;
+
+    if (!active || meta.height < minHeight) {
+        if (meta.height < minHeight) {
+            for (let vertex = 0; vertex < meta.vertexCount; vertex++) {
+                const base = (meta.vertexStart + vertex) * 3;
+                target[base] = 0;
+                target[base + 1] = 0;
+                target[base + 2] = 0;
+            }
+        } else {
+            applySourceColorToMeta(target, sourceColors, meta);
+        }
+        colorAttribute.needsUpdate = true;
+        return;
+    }
+
+    for (let vertex = 0; vertex < meta.vertexCount; vertex++) {
+        const base = (meta.vertexStart + vertex) * 3;
+        const sourceColor = new THREE.Color(
+            sourceColors[base],
+            sourceColors[base + 1],
+            sourceColors[base + 2]
+        );
+        sourceColor.lerp(MAP_HIGHLIGHT, 0.4);
+        target[base] = sourceColor.r;
+        target[base + 1] = sourceColor.g;
+        target[base + 2] = sourceColor.b;
+    }
+
+    colorAttribute.needsUpdate = true;
+}
+
+export function setRankingHighlight(item, active) {
+    if (!item) return;
+    item.mesh.material.emissive.set(active ? 0x3a1128 : 0x000000);
+    item.mesh.material.emissiveIntensity = active ? 1.15 : 0;
+    const scale = active ? 1.06 : 1;
+    item.mesh.scale.setScalar(scale);
 }
 
 export function findBuildingMetaByFaceIndex(buildingMeta, faceIndex) {

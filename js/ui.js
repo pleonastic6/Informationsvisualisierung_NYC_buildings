@@ -1,3 +1,5 @@
+const THREE = window.THREE;
+
 import { drawLegendBar, groundColor, heightColor } from './colors.js';
 import { applyBuildingColors, applyHeightFilter as applyMeshHeightFilter, updateRankingView } from './buildings.js';
 
@@ -105,9 +107,9 @@ export function createViewController({ getState, setViewMode, updateVisibleStats
             const state = getState();
             viewButtons.forEach((button) => button.classList.toggle('active', button.dataset.view === viewMode));
 
-            if (state.mesh) state.mesh.visible = viewMode === 'map';
-            if (state.streetGroup) state.streetGroup.visible = viewMode === 'map';
-            if (state.rankingGroup) state.rankingGroup.visible = viewMode === 'ranking';
+            if (state.mesh) state.mesh.visible = true;
+            if (state.streetGroup) state.streetGroup.visible = true;
+            if (state.rankingGroup) state.rankingGroup.visible = true;
 
             updateVisibleStats();
         }
@@ -144,4 +146,54 @@ export function showTooltip(meta, pointer) {
 
 export function hideTooltip() {
     document.getElementById('hover-tooltip').style.opacity = '0';
+}
+
+export function createRankingLabelController({ camera, getState }) {
+    const root = document.createElement('div');
+    root.id = 'ranking-labels';
+    document.body.appendChild(root);
+
+    const labels = [];
+    const temp = new THREE.Vector3();
+
+    function makeLabel(item) {
+        const el = document.createElement('div');
+        el.className = 'ranking-label';
+        el.innerHTML = `<span class="ranking-label-rank">#${item.meta.rank}</span><span class="ranking-label-height">${Math.round(item.meta.height)} m</span>`;
+        root.appendChild(el);
+        return { item, el };
+    }
+
+    return {
+        setItems(items) {
+            root.innerHTML = '';
+            labels.length = 0;
+            items.slice(0, 10).forEach((item) => labels.push(makeLabel(item)));
+        },
+        update() {
+            const state = getState();
+            const visible = state.transitionProgress > 0.55;
+
+            labels.forEach(({ item, el }) => {
+                if (!visible || !item.mesh.visible) {
+                    el.style.opacity = '0';
+                    return;
+                }
+
+                temp.set(0, item.meta.height * 0.12 + 6, 0);
+                item.mesh.localToWorld(temp);
+                temp.project(camera);
+
+                if (temp.z < -1 || temp.z > 1) {
+                    el.style.opacity = '0';
+                    return;
+                }
+
+                const x = (temp.x * 0.5 + 0.5) * window.innerWidth;
+                const y = (-temp.y * 0.5 + 0.5) * window.innerHeight;
+                el.style.transform = `translate(${x}px, ${y}px) translate(-50%, -100%)`;
+                el.style.opacity = `${Math.max(0, Math.min(1, (state.transitionProgress - 0.55) / 0.35))}`;
+            });
+        }
+    };
 }

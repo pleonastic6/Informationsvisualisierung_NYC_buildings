@@ -1,4 +1,9 @@
-import { buildBuildings, buildRankingView } from './js/buildings.js';
+import {
+    buildBuildings,
+    buildRankingView,
+    setMapHighlight,
+    setRankingHighlight
+} from './js/buildings.js';
 import { createControls } from './js/controls.js';
 import { createHoverController } from './js/interaction.js';
 import { createScene } from './js/scene.js';
@@ -6,6 +11,7 @@ import { buildStreets } from './js/streets.js';
 import {
     bindHeightFilter,
     createModeController,
+    createRankingLabelController,
     createViewController,
     finishLoading,
     getMinHeightFilter,
@@ -20,6 +26,7 @@ import {
 const state = {
     currentMode: 'height',
     viewMode: 'map',
+    transitionProgress: 0,
     mesh: null,
     buildingMeta: [],
     rankingGroup: null,
@@ -34,11 +41,14 @@ const state = {
     minGround: 0,
     maxGround: 1,
     allStats: null,
-    rankingStats: null
+    rankingStats: null,
+    hoveredMapMeta: null,
+    hoveredRankingItem: null
 };
 
 const { scene, camera, renderer } = createScene();
 const controls = createControls(camera);
+const rankingLabels = createRankingLabelController({ camera, getState: () => state });
 
 function updateVisibleStats() {
     const stats = state.viewMode === 'ranking' ? state.rankingStats : state.allStats;
@@ -46,11 +56,113 @@ function updateVisibleStats() {
     updateStats(stats);
 }
 
+function clearHighlights() {
+    if (state.hoveredMapMeta && state.mesh) {
+        setMapHighlight({
+            mesh: state.mesh,
+            meta: state.hoveredMapMeta,
+            sourceColors: state.palettes[state.currentMode],
+            minHeight: getMinHeightFilter(),
+            active: false
+        });
+        state.hoveredMapMeta = null;
+    }
+
+    if (state.hoveredRankingItem) {
+        setRankingHighlight(state.hoveredRankingItem, false);
+        state.hoveredRankingItem = null;
+    }
+}
+
+function handleHover(meta, pointer, context) {
+    if (context?.type === 'map') {
+        if (state.hoveredRankingItem) {
+            setRankingHighlight(state.hoveredRankingItem, false);
+            state.hoveredRankingItem = null;
+        }
+
+        if (state.hoveredMapMeta && state.hoveredMapMeta !== meta) {
+            setMapHighlight({
+                mesh: state.mesh,
+                meta: state.hoveredMapMeta,
+                sourceColors: state.palettes[state.currentMode],
+                minHeight: getMinHeightFilter(),
+                active: false
+            });
+        }
+
+        state.hoveredMapMeta = meta;
+        setMapHighlight({
+            mesh: state.mesh,
+            meta,
+            sourceColors: state.palettes[state.currentMode],
+            minHeight: getMinHeightFilter(),
+            active: true
+        });
+    }
+
+    if (context?.type === 'ranking') {
+        if (state.hoveredMapMeta && state.mesh) {
+            setMapHighlight({
+                mesh: state.mesh,
+                meta: state.hoveredMapMeta,
+                sourceColors: state.palettes[state.currentMode],
+                minHeight: getMinHeightFilter(),
+                active: false
+            });
+            state.hoveredMapMeta = null;
+        }
+
+        if (state.hoveredRankingItem && state.hoveredRankingItem !== context.item) {
+            setRankingHighlight(state.hoveredRankingItem, false);
+        }
+
+        state.hoveredRankingItem = context.item;
+        setRankingHighlight(context.item, true);
+    }
+
+    showTooltip(meta, pointer);
+}
+
+function updateViewTransition() {
+    const target = state.viewMode === 'ranking' ? 1 : 0;
+    state.transitionProgress += (target - state.transitionProgress) * 0.08;
+    if (Math.abs(target - state.transitionProgress) < 0.001) state.transitionProgress = target;
+
+    const mapAlpha = 1 - state.transitionProgress;
+    const rankingAlpha = state.transitionProgress;
+
+    if (state.mesh) {
+        state.mesh.material.opacity = Math.max(0.08, mapAlpha);
+        state.mesh.visible = mapAlpha > 0.02;
+        state.mesh.position.y = -state.transitionProgress * 10;
+    }
+
+    if (state.streetGroup) {
+        state.streetGroup.visible = mapAlpha > 0.02;
+        state.streetGroup.children.forEach((child) => {
+            child.material.opacity = (child.userData.baseOpacity ?? child.material.opacity) * mapAlpha;
+        });
+        state.streetGroup.position.y = -state.transitionProgress * 6;
+    }
+
+    if (state.rankingGroup) {
+        state.rankingGroup.visible = rankingAlpha > 0.02;
+        state.rankingGroup.position.y = (1 - rankingAlpha) * 18;
+        state.rankingGroup.scale.setScalar(0.92 + rankingAlpha * 0.08);
+        state.rankingItems.forEach((item) => {
+            item.mesh.material.opacity = item.mesh.visible ? Math.max(0.05, rankingAlpha) : 0;
+        });
+    }
+}
+
 const modeController = createModeController({
     getState: () => state,
     setMode: (mode) => {
         state.currentMode = mode;
         modeController.applyMode(mode);
+        clearHighlights();
+        hideTooltip();
     }
 });
 
@@ -58,6 +170,8 @@ const viewController = createViewController({
     getState: () => state,
     setViewMode: (viewMode) => {
         state.viewMode = viewMode;
+        clearHighlights();
+        hideTooltip();
         viewController.applyViewMode(viewMode);
     },
     updateVisibleStats
@@ -69,7 +183,11 @@ bindHeightFilter(() => ({
     sourceColors: state.palettes[state.currentMode],
     rankingItems: state.rankingItems,
     currentMode: state.currentMode
-}), updateVisibleStats);
+}), () => {
+    clearHighlights();
+    hideTooltip();
+    updateVisibleStats();
+});
 
 createHoverController({
     camera,
@@ -77,15 +195,21 @@ createHoverController({
         viewMode: state.viewMode,
         mapMesh: state.mesh,
         mapMeta: state.buildingMeta,
-        rankingItems: state.rankingItems
+        rankingItems: state.rankingItems,
+        minHeight: getMinHeightFilter()
     }),
-    onHover: showTooltip,
-    onLeave: hideTooltip
+    onHover: handleHover,
+    onLeave: () => {
+        clearHighlights();
+        hideTooltip();
+    }
 });
 
 function animate() {
     requestAnimationFrame(animate);
     controls.updateCamera();
+    updateViewTransition();
+    rankingLabels.update();
     renderer.render(scene, camera);
 }
 
@@ -141,6 +265,7 @@ async function init() {
 
     state.rankingGroup = rankingResult.group;
     state.rankingItems = rankingResult.items;
+    rankingLabels.setItems(state.rankingItems);
     state.rankingStats = {
         count: rankingResult.items.length,
         maxHeight: rankingResult.items[0]?.meta.height ?? 0,
@@ -157,6 +282,9 @@ async function init() {
         if (streetResponse.ok) {
             const streetData = await streetResponse.json();
             state.streetGroup = buildStreets(scene, streetData);
+            state.streetGroup.children.forEach((child) => {
+                child.userData.baseOpacity = child.material.opacity;
+            });
             state.allStats = {
                 ...state.allStats,
                 streetCount: streetData.meta.count
@@ -169,7 +297,7 @@ async function init() {
 
     modeController.applyMode(state.currentMode);
     viewController.applyViewMode(state.viewMode);
-    if (getMinHeightFilter() > 0) updateVisibleStats();
+    updateViewTransition();
     finishLoading();
 }
 

@@ -31,7 +31,8 @@ export function createHoverController({ camera, getInteractiveState, onHover, on
             const hit = hits[0];
             if (!hit) return clearHover();
             hovering = true;
-            onHover(hit.object.userData.meta, { x: event.clientX, y: event.clientY });
+            const item = state.rankingItems.find((entry) => entry.mesh === hit.object) ?? null;
+            onHover(hit.object.userData.meta, { x: event.clientX, y: event.clientY }, { type: 'ranking', item });
             return;
         }
 
@@ -41,10 +42,10 @@ export function createHoverController({ camera, getInteractiveState, onHover, on
         if (!hit) return clearHover();
 
         const meta = findBuildingMetaByFaceIndex(state.mapMeta, hit.faceIndex);
-        if (!meta) return clearHover();
+        if (!meta || meta.height < state.minHeight) return clearHover();
 
         hovering = true;
-        onHover(meta, { x: event.clientX, y: event.clientY });
+        onHover(meta, { x: event.clientX, y: event.clientY }, { type: 'map', meta });
     });
 
     window.addEventListener('mouseleave', clearHover);

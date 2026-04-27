@@ -128,7 +128,8 @@ canvas {
 #legend,
 #filter-panel,
 #controls,
-#hover-tooltip {
+#hover-tooltip,
+#ranking-labels {
     position: relative;
     z-index: 5;
 }
@@ -380,6 +381,41 @@ input[type=range]::-webkit-slider-thumb {
     transition: opacity .12s ease;
     box-shadow: var(--shadow);
     backdrop-filter: blur(14px);
+}
+
+#ranking-labels {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+}
+
+.ranking-label {
+    position: absolute;
+    padding: 6px 10px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.58);
+    backdrop-filter: blur(10px);
+    box-shadow: var(--shadow);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+    opacity: 0;
+    transition: opacity .16s ease;
+}
+
+.ranking-label-rank {
+    font-family: "Ndot-55", sans-serif;
+    color: #ffffff;
+    font-size: 9px;
+    letter-spacing: .16em;
+}
+
+.ranking-label-height {
+    color: var(--muted);
+    font-size: 8px;
+    letter-spacing: .16em;
 }
 
 .tooltip-title {
