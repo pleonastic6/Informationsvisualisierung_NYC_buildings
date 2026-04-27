@@ -172,6 +172,7 @@ const viewController = createViewController({
         state.viewMode = viewMode;
         clearHighlights();
         hideTooltip();
+        controls.transitionToView(viewMode);
         viewController.applyViewMode(viewMode);
     },
     updateVisibleStats
@@ -297,6 +298,7 @@ async function init() {
 
     modeController.applyMode(state.currentMode);
     viewController.applyViewMode(state.viewMode);
+    controls.transitionToView('map');
     updateViewTransition();
     finishLoading();
 }

@@ -2,32 +2,42 @@ const THREE = window.THREE;
 
 const CAM_SPEED = 1.5;
 const CAM_SENSITIVITY = 0.003;
-const INTRO_DURATION_MS = 5200;
 
 export function createControls(camera) {
     const keys = {};
     let mouseDown = false;
     let lastMouse = { x: 0, y: 0 };
-    let camYaw = -0.3;
-    let camPitch = 0.8;
-    const camPos = new THREE.Vector3(-55, 200, 300);
-    const introStart = performance.now();
-    let introEnabled = true;
+    let camYaw = -0.12;
+    let camPitch = 0.92;
+    const camPos = new THREE.Vector3(-8, 115, 360);
 
-    const introFrom = {
-        pos: new THREE.Vector3(140, 280, 520),
-        yaw: -0.95,
-        pitch: 0.68
-    };
-
-    const introTo = {
+    let cinematicActive = false;
+    const cinematicFrom = {
         pos: camPos.clone(),
         yaw: camYaw,
         pitch: camPitch
     };
+    const cinematicTo = {
+        pos: camPos.clone(),
+        yaw: camYaw,
+        pitch: camPitch
+    };
+    let cinematicProgress = 1;
 
-    function endIntro() {
-        introEnabled = false;
+    function stopCinematic() {
+        cinematicActive = false;
+        cinematicProgress = 1;
+    }
+
+    function startCinematic(target) {
+        cinematicFrom.pos.copy(camPos);
+        cinematicFrom.yaw = camYaw;
+        cinematicFrom.pitch = camPitch;
+        cinematicTo.pos.copy(target.pos);
+        cinematicTo.yaw = target.yaw;
+        cinematicTo.pitch = target.pitch;
+        cinematicProgress = 0;
+        cinematicActive = true;
     }
 
     function getDirection() {
@@ -38,24 +48,24 @@ export function createControls(camera) {
         );
     }
 
-    function easeOutCubic(t) {
-        return 1 - Math.pow(1 - t, 3);
+    function easeInOutCubic(t) {
+        return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
     }
 
     function updateCamera() {
-        if (introEnabled) {
-            const t = Math.min(1, (performance.now() - introStart) / INTRO_DURATION_MS);
-            const eased = easeOutCubic(t);
-            camPos.lerpVectors(introFrom.pos, introTo.pos, eased);
-            camYaw = introFrom.yaw + (introTo.yaw - introFrom.yaw) * eased;
-            camPitch = introFrom.pitch + (introTo.pitch - introFrom.pitch) * eased;
-            if (t >= 1) introEnabled = false;
+        if (cinematicActive) {
+            cinematicProgress = Math.min(1, cinematicProgress + 0.035);
+            const eased = easeInOutCubic(cinematicProgress);
+            camPos.lerpVectors(cinematicFrom.pos, cinematicTo.pos, eased);
+            camYaw = cinematicFrom.yaw + (cinematicTo.yaw - cinematicFrom.yaw) * eased;
+            camPitch = cinematicFrom.pitch + (cinematicTo.pitch - cinematicFrom.pitch) * eased;
+            if (cinematicProgress >= 1) cinematicActive = false;
         }
 
         const dir = getDirection();
         const right = new THREE.Vector3(-Math.cos(camYaw), 0, Math.sin(camYaw));
 
-        if (!introEnabled) {
+        if (!cinematicActive) {
             if (keys.w || keys.W || keys.ArrowUp) camPos.addScaledVector(dir, CAM_SPEED);
             if (keys.s || keys.S || keys.ArrowDown) camPos.addScaledVector(dir, -CAM_SPEED);
             if (keys.a || keys.A || keys.ArrowLeft) camPos.addScaledVector(right, -CAM_SPEED);
@@ -69,7 +79,7 @@ export function createControls(camera) {
     }
 
     document.addEventListener('keydown', (event) => {
-        endIntro();
+        stopCinematic();
         keys[event.key] = true;
     });
 
@@ -79,7 +89,7 @@ export function createControls(camera) {
 
     document.addEventListener('mousedown', (event) => {
         if (event.target.id === 'height-filter') return;
-        endIntro();
+        stopCinematic();
         if (event.button === 0) {
             mouseDown = true;
             lastMouse = { x: event.clientX, y: event.clientY };
@@ -92,24 +102,40 @@ export function createControls(camera) {
 
     document.addEventListener('mousemove', (event) => {
         if (!mouseDown) return;
-        endIntro();
+        stopCinematic();
         const dx = event.clientX - lastMouse.x;
         const dy = event.clientY - lastMouse.y;
         lastMouse = { x: event.clientX, y: event.clientY };
         camYaw -= dx * CAM_SENSITIVITY;
         camPitch = Math.max(-1.4, Math.min(1.4, camPitch + dy * CAM_SENSITIVITY));
-        introTo.yaw = camYaw;
-        introTo.pitch = camPitch;
     });
 
     document.addEventListener('wheel', (event) => {
-        endIntro();
+        stopCinematic();
         camPos.addScaledVector(getDirection(), -event.deltaY * 0.3);
-        introTo.pos.copy(camPos);
     }, { passive: true });
 
     document.addEventListener('contextmenu', (event) => event.preventDefault());
 
     updateCamera();
-    return { updateCamera };
+
+    return {
+        updateCamera,
+        transitionToView(view) {
+            if (view === 'ranking') {
+                startCinematic({
+                    pos: new THREE.Vector3(0, 125, 245),
+                    yaw: 0,
+                    pitch: 0.88
+                });
+                return;
+            }
+
+            startCinematic({
+                pos: new THREE.Vector3(-8, 115, 360),
+                yaw: -0.12,
+                pitch: 0.92
+            });
+        }
+    };
 }
