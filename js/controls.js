@@ -2,6 +2,7 @@ const THREE = window.THREE;
 
 const CAM_SPEED = 1.5;
 const CAM_SENSITIVITY = 0.003;
+const INTRO_DURATION_MS = 5200;
 
 export function createControls(camera) {
     const keys = {};
@@ -10,6 +11,24 @@ export function createControls(camera) {
     let camYaw = -0.3;
     let camPitch = 0.8;
     const camPos = new THREE.Vector3(-55, 200, 300);
+    const introStart = performance.now();
+    let introEnabled = true;
+
+    const introFrom = {
+        pos: new THREE.Vector3(140, 280, 520),
+        yaw: -0.95,
+        pitch: 0.68
+    };
+
+    const introTo = {
+        pos: camPos.clone(),
+        yaw: camYaw,
+        pitch: camPitch
+    };
+
+    function endIntro() {
+        introEnabled = false;
+    }
 
     function getDirection() {
         return new THREE.Vector3(
@@ -19,22 +38,38 @@ export function createControls(camera) {
         );
     }
 
+    function easeOutCubic(t) {
+        return 1 - Math.pow(1 - t, 3);
+    }
+
     function updateCamera() {
+        if (introEnabled) {
+            const t = Math.min(1, (performance.now() - introStart) / INTRO_DURATION_MS);
+            const eased = easeOutCubic(t);
+            camPos.lerpVectors(introFrom.pos, introTo.pos, eased);
+            camYaw = introFrom.yaw + (introTo.yaw - introFrom.yaw) * eased;
+            camPitch = introFrom.pitch + (introTo.pitch - introFrom.pitch) * eased;
+            if (t >= 1) introEnabled = false;
+        }
+
         const dir = getDirection();
         const right = new THREE.Vector3(-Math.cos(camYaw), 0, Math.sin(camYaw));
 
-        if (keys.w || keys.W || keys.ArrowUp) camPos.addScaledVector(dir, CAM_SPEED);
-        if (keys.s || keys.S || keys.ArrowDown) camPos.addScaledVector(dir, -CAM_SPEED);
-        if (keys.a || keys.A || keys.ArrowLeft) camPos.addScaledVector(right, -CAM_SPEED);
-        if (keys.d || keys.D || keys.ArrowRight) camPos.addScaledVector(right, CAM_SPEED);
-        if (keys.q || keys.Q) camPos.y += CAM_SPEED;
-        if (keys.e || keys.E) camPos.y -= CAM_SPEED;
+        if (!introEnabled) {
+            if (keys.w || keys.W || keys.ArrowUp) camPos.addScaledVector(dir, CAM_SPEED);
+            if (keys.s || keys.S || keys.ArrowDown) camPos.addScaledVector(dir, -CAM_SPEED);
+            if (keys.a || keys.A || keys.ArrowLeft) camPos.addScaledVector(right, -CAM_SPEED);
+            if (keys.d || keys.D || keys.ArrowRight) camPos.addScaledVector(right, CAM_SPEED);
+            if (keys.q || keys.Q) camPos.y += CAM_SPEED;
+            if (keys.e || keys.E) camPos.y -= CAM_SPEED;
+        }
 
         camera.position.copy(camPos);
         camera.lookAt(camPos.clone().addScaledVector(dir, 100));
     }
 
     document.addEventListener('keydown', (event) => {
+        endIntro();
         keys[event.key] = true;
     });
 
@@ -44,6 +79,7 @@ export function createControls(camera) {
 
     document.addEventListener('mousedown', (event) => {
         if (event.target.id === 'height-filter') return;
+        endIntro();
         if (event.button === 0) {
             mouseDown = true;
             lastMouse = { x: event.clientX, y: event.clientY };
@@ -56,15 +92,20 @@ export function createControls(camera) {
 
     document.addEventListener('mousemove', (event) => {
         if (!mouseDown) return;
+        endIntro();
         const dx = event.clientX - lastMouse.x;
         const dy = event.clientY - lastMouse.y;
         lastMouse = { x: event.clientX, y: event.clientY };
         camYaw -= dx * CAM_SENSITIVITY;
         camPitch = Math.max(-1.4, Math.min(1.4, camPitch + dy * CAM_SENSITIVITY));
+        introTo.yaw = camYaw;
+        introTo.pitch = camPitch;
     });
 
     document.addEventListener('wheel', (event) => {
+        endIntro();
         camPos.addScaledVector(getDirection(), -event.deltaY * 0.3);
+        introTo.pos.copy(camPos);
     }, { passive: true });
 
     document.addEventListener('contextmenu', (event) => event.preventDefault());

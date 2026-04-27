@@ -86,6 +86,41 @@ function applySourceColorToMeta(target, sourceColors, meta) {
     }
 }
 
+function createRankingStage(width, depth) {
+    const group = new THREE.Group();
+
+    const base = new THREE.Mesh(
+        new THREE.BoxGeometry(width, 8, depth),
+        new THREE.MeshStandardMaterial({
+            color: 0x160d14,
+            roughness: 0.88,
+            metalness: 0.14
+        })
+    );
+    base.position.y = -5.2;
+    group.add(base);
+
+    const top = new THREE.Mesh(
+        new THREE.BoxGeometry(width - 6, 1.2, depth - 6),
+        new THREE.MeshStandardMaterial({
+            color: 0x26111d,
+            roughness: 0.76,
+            metalness: 0.16
+        })
+    );
+    top.position.y = -0.8;
+    group.add(top);
+
+    const border = new THREE.LineSegments(
+        new THREE.EdgesGeometry(new THREE.BoxGeometry(width - 4, 1.8, depth - 4)),
+        new THREE.LineBasicMaterial({ color: 0xa85a86, transparent: true, opacity: 0.42 })
+    );
+    border.position.y = -0.35;
+    group.add(border);
+
+    return group;
+}
+
 export async function buildBuildings({ scene, buildings, maxHeight, minGround, maxGround, setProgress }) {
     const geoList = [];
     const CHUNK = 400;
@@ -206,6 +241,11 @@ export function buildRankingView({ scene, buildings, maxHeight, minGround, maxGr
     const rowCount = Math.ceil(topBuildings.length / GRID_COLUMNS);
     const xOffset = ((GRID_COLUMNS - 1) * GRID_SPACING) / 2;
     const zOffset = ((rowCount - 1) * GRID_SPACING) / 2;
+    const stageWidth = GRID_COLUMNS * GRID_SPACING + 44;
+    const stageDepth = rowCount * GRID_SPACING + 44;
+
+    const stage = createRankingStage(stageWidth, stageDepth);
+    group.add(stage);
 
     const items = topBuildings.map((building, index) => {
         const geometry = buildGeometry(building, { centered: true });
@@ -236,7 +276,7 @@ export function buildRankingView({ scene, buildings, maxHeight, minGround, maxGr
     });
 
     scene.add(group);
-    return { group, items };
+    return { group, items, stage };
 }
 
 export function applyBuildingColors({ mesh, buildingMeta, sourceColors }) {
