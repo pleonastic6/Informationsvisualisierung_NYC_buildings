@@ -282,21 +282,51 @@ export function createSearchController({ getSearchState, onSelect }) {
     };
 }
 
-export function createFocusDebugController() {
+export function createFocusDebugController({ onModeChange }) {
     const panel = document.createElement('div');
     panel.id = 'focus-debug';
-    panel.innerHTML = '<div class="focus-debug-title">Search Debug</div><div id="focus-debug-body">Noch kein Ziel gewählt.</div>';
+    panel.innerHTML = `
+        <div class="focus-debug-title">Search Debug</div>
+        <div id="focus-debug-modes" class="focus-debug-modes"></div>
+        <div id="focus-debug-body">Noch kein Ziel gewählt.</div>
+    `;
     document.body.appendChild(panel);
 
     const body = panel.querySelector('#focus-debug-body');
+    const modesRoot = panel.querySelector('#focus-debug-modes');
+    const modeButtons = new Map();
+    const modes = [
+        ['center', 'center'],
+        ['building', 'building'],
+        ['flipX', '-x'],
+        ['flipZ', '-z'],
+        ['flipBoth', '-x -z'],
+        ['swap', 'swap']
+    ];
+
+    modes.forEach(([value, label]) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'focus-debug-mode-btn';
+        button.textContent = label;
+        button.addEventListener('click', () => onModeChange(value));
+        modesRoot.appendChild(button);
+        modeButtons.set(value, button);
+    });
 
     return {
-        setTarget(meta) {
+        setMode(mode) {
+            modeButtons.forEach((button, value) => {
+                button.classList.toggle('active', value === mode);
+            });
+        },
+        setTarget(meta, target) {
             body.innerHTML = `
                 <div class="focus-debug-row">Name <span>${meta.name || '—'}</span></div>
                 <div class="focus-debug-row">BIN <span>${meta.bin || '—'}</span></div>
                 <div class="focus-debug-row">meta.center <span>${meta.centerX.toFixed(2)}, ${meta.centerZ.toFixed(2)}</span></div>
                 <div class="focus-debug-row">building.xz <span>${meta.building.x.toFixed(2)}, ${meta.building.z.toFixed(2)}</span></div>
+                <div class="focus-debug-row">target.xz <span>${target.x.toFixed(2)}, ${target.z.toFixed(2)}</span></div>
                 <div class="focus-debug-row">footprint r <span>${meta.footprintRadius.toFixed(2)}</span></div>
                 <div class="focus-debug-row">height <span>${meta.height.toFixed(2)} m</span></div>
             `;

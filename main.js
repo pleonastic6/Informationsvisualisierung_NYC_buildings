@@ -49,13 +49,21 @@ const state = {
     hoveredMapMeta: null,
     hoveredRankingItem: null,
     pinnedMapMeta: null,
-    searchEntries: []
+    searchEntries: [],
+    focusDebugMode: 'center'
 };
 
 const { scene, camera, renderer } = createScene();
 const controls = createControls(camera);
 const rankingLabels = createRankingLabelController({ camera, getState: () => state });
-const focusDebug = createFocusDebugController();
+const focusDebug = createFocusDebugController({
+    onModeChange: (mode) => {
+        state.focusDebugMode = mode;
+        focusDebug.setMode(mode);
+        if (state.pinnedMapMeta) focusBuilding(state.pinnedMapMeta, { preserveSelection: true });
+    }
+});
+focusDebug.setMode(state.focusDebugMode);
 
 const debugTargetMarker = new THREE.Group();
 debugTargetMarker.visible = false;
@@ -75,6 +83,27 @@ debugTargetHead.position.y = 25;
 debugTargetMarker.add(debugTargetHead);
 
 scene.add(debugTargetMarker);
+
+function getFocusTarget(meta, mode = state.focusDebugMode) {
+    const center = { x: meta.centerX, z: meta.centerZ };
+    const building = { x: meta.building.x, z: meta.building.z };
+
+    switch (mode) {
+        case 'building':
+            return building;
+        case 'flipX':
+            return { x: -center.x, z: center.z };
+        case 'flipZ':
+            return { x: center.x, z: -center.z };
+        case 'flipBoth':
+            return { x: -center.x, z: -center.z };
+        case 'swap':
+            return { x: center.z, z: center.x };
+        case 'center':
+        default:
+            return center;
+    }
+}
 
 function clearMapMetaHighlight(meta) {
     if (!meta || !state.mesh) return;
@@ -109,21 +138,22 @@ function createSearchEntries() {
         .sort((a, b) => b.height - a.height);
 }
 
-function focusBuilding(meta) {
+function focusBuilding(meta, options = {}) {
     if (!meta) return;
-    if (state.pinnedMapMeta && state.pinnedMapMeta !== meta && state.pinnedMapMeta !== state.hoveredMapMeta) {
+    if (!options.preserveSelection && state.pinnedMapMeta && state.pinnedMapMeta !== meta && state.pinnedMapMeta !== state.hoveredMapMeta) {
         clearMapMetaHighlight(state.pinnedMapMeta);
     }
 
     state.pinnedMapMeta = meta;
+    const target = getFocusTarget(meta);
     state.viewMode = 'map';
     clearHighlights();
     hideTooltip();
     debugTargetMarker.visible = true;
-    debugTargetMarker.position.set(meta.centerX, meta.building.g * 0.02, meta.centerZ);
-    focusDebug.setTarget(meta);
+    debugTargetMarker.position.set(target.x, meta.building.g * 0.02, target.z);
+    focusDebug.setTarget(meta, target);
     controls.transitionToView('map');
-    controls.focusOnBuilding(meta);
+    controls.focusOnBuilding(meta, target);
     viewController.applyViewMode('map');
     setMapMetaHighlight(meta, true);
 }

@@ -173,12 +173,16 @@ export function createControls(camera) {
         transitionToView(view) {
             startCinematic(view);
         },
-        focusOnBuilding(meta) {
+        focusOnBuilding(meta, targetOverride = null) {
             const baseHeight = meta.building.g * 0.02;
             const targetHeight = Math.max(10, Math.min(38, meta.height * 0.1));
             const cameraHeight = Math.max(30, Math.min(120, meta.height * 0.28 + 24));
             const distance = Math.max(50, Math.min(220, meta.footprintRadius * 2.8 + meta.height * 0.18 + 30));
-            const target = new THREE.Vector3(meta.centerX, baseHeight + targetHeight, meta.centerZ);
+            const target = new THREE.Vector3(
+                targetOverride?.x ?? meta.centerX,
+                baseHeight + targetHeight,
+                targetOverride?.z ?? meta.centerZ
+            );
 
             const pos = target.clone().addScaledVector(SEARCH_FOCUS_DIRECTION, -distance);
             pos.y = baseHeight + cameraHeight;
