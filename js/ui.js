@@ -244,18 +244,18 @@ export function createSearchController({ getSearchState, onSelect }) {
         const matches = [];
 
         for (const entry of searchEntries) {
-            const byBin = entry.bin && entry.bin.toLowerCase().includes(digitQuery);
-            const byName = entry.name && entry.name.toLowerCase().includes(query);
+            const byBin = entry.searchBin && entry.searchBin.includes(digitQuery);
+            const byName = entry.searchName && entry.searchName.includes(query);
             if (!byBin && !byName) continue;
             matches.push(entry);
         }
 
         matches.sort((a, b) => {
-            const aExact = a.bin === digitQuery || a.name?.toLowerCase() === query;
-            const bExact = b.bin === digitQuery || b.name?.toLowerCase() === query;
+            const aExact = a.searchBin === digitQuery || a.searchName === query;
+            const bExact = b.searchBin === digitQuery || b.searchName === query;
             if (aExact !== bExact) return aExact ? -1 : 1;
-            const aStarts = a.bin?.startsWith(digitQuery) || a.name?.toLowerCase().startsWith(query);
-            const bStarts = b.bin?.startsWith(digitQuery) || b.name?.toLowerCase().startsWith(query);
+            const aStarts = a.searchBin?.startsWith(digitQuery) || a.searchName?.startsWith(query);
+            const bStarts = b.searchBin?.startsWith(digitQuery) || b.searchName?.startsWith(query);
             if (aStarts !== bStarts) return aStarts ? -1 : 1;
             return b.height - a.height;
         });

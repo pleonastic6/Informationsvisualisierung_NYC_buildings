@@ -6,8 +6,16 @@ export function createHoverController({ camera, getInteractiveState, onHover, on
     const raycaster = new THREE.Raycaster();
     const pointer = new THREE.Vector2();
     let hovering = false;
+    let cachedRankingItems = [];
+    let cachedRankingMeshes = [];
+    let rafPending = false;
+    let lastEvent = null;
+    let lastHoverMeta = null;
+    let lastHoverType = null;
 
     function clearHover() {
+        lastHoverMeta = null;
+        lastHoverType = null;
         if (!hovering) return;
         hovering = false;
         onLeave();
@@ -18,21 +26,31 @@ export function createHoverController({ camera, getInteractiveState, onHover, on
         pointer.y = -(event.clientY / window.innerHeight) * 2 + 1;
     }
 
-    window.addEventListener('mousemove', (event) => {
-        updatePointer(event);
+    function processHover() {
+        rafPending = false;
+        const event = lastEvent;
+        if (!event) return;
+
         const state = getInteractiveState();
         if (!state) return clearHover();
 
         raycaster.setFromCamera(pointer, camera);
 
         if (state.viewMode === 'ranking') {
-            const rankingMeshes = state.rankingItems.map((item) => item.mesh).filter((mesh) => mesh.visible);
-            const hits = raycaster.intersectObjects(rankingMeshes, false);
+            if (cachedRankingItems !== state.rankingItems) {
+                cachedRankingItems = state.rankingItems;
+                cachedRankingMeshes = cachedRankingItems.map((item) => item.mesh);
+            }
+            const hits = raycaster.intersectObjects(cachedRankingMeshes, false);
             const hit = hits[0];
-            if (!hit) return clearHover();
+            if (!hit || !hit.object.visible) return clearHover();
+            const item = hit.object.userData.rankingItem ?? null;
+            const meta = hit.object.userData.meta;
+            if (hovering && lastHoverType === 'ranking' && lastHoverMeta === meta) return;
             hovering = true;
-            const item = state.rankingItems.find((entry) => entry.mesh === hit.object) ?? null;
-            onHover(hit.object.userData.meta, { x: event.clientX, y: event.clientY }, { type: 'ranking', item });
+            lastHoverMeta = meta;
+            lastHoverType = 'ranking';
+            onHover(meta, { x: event.clientX, y: event.clientY }, { type: 'ranking', item });
             return;
         }
 
@@ -43,9 +61,20 @@ export function createHoverController({ camera, getInteractiveState, onHover, on
 
         const meta = findBuildingMetaByFaceIndex(state.mapMeta, hit.faceIndex);
         if (!meta || meta.height < state.minHeight) return clearHover();
+        if (hovering && lastHoverType === 'map' && lastHoverMeta === meta) return;
 
         hovering = true;
+        lastHoverMeta = meta;
+        lastHoverType = 'map';
         onHover(meta, { x: event.clientX, y: event.clientY }, { type: 'map', meta });
+    }
+
+    window.addEventListener('mousemove', (event) => {
+        lastEvent = event;
+        updatePointer(event);
+        if (rafPending) return;
+        rafPending = true;
+        requestAnimationFrame(processHover);
     });
 
     window.addEventListener('mouseleave', clearHover);

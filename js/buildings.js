@@ -7,6 +7,10 @@ const GRID_COLUMNS = 10;
 const GRID_SPACING = 36;
 const MAP_HIGHLIGHT = new THREE.Color(0xffb3dc);
 
+function copyPalette(target, offset, source) {
+    target.set(source, offset);
+}
+
 function createShape(points, centerX = 0, centerZ = 0) {
     const shape = new THREE.Shape();
     shape.moveTo(points[0] - centerX, points[1] - centerZ);
@@ -168,13 +172,11 @@ function createRankingStage(width, depth) {
 
 export async function buildBuildings({ scene, buildings, maxHeight, minGround, maxGround, setProgress }) {
     const geoList = [];
+    const paletteList = [];
     const CHUNK = 400;
-    const palettes = {
-        height: [],
-        era: [],
-        ground: []
-    };
     const buildingMeta = [];
+    let totalVertices = 0;
+    let totalIndices = 0;
 
     for (let off = 0; off < buildings.length; off += CHUNK) {
         const end = Math.min(off + CHUNK, buildings.length);
@@ -185,16 +187,13 @@ export async function buildBuildings({ scene, buildings, maxHeight, minGround, m
             const vertexCount = geometry.attributes.position.count;
             const palette = createPaletteSet(building, maxHeight, minGround, maxGround, vertexCount);
 
-            for (let v = 0; v < vertexCount * 3; v++) {
-                palettes.height.push(palette.height[v]);
-                palettes.era.push(palette.era[v]);
-                palettes.ground.push(palette.ground[v]);
-            }
-
             geoList.push(geometry);
+            paletteList.push(palette);
+            totalVertices += vertexCount;
+            totalIndices += geometry.index ? geometry.index.count : vertexCount;
             buildingMeta.push({
                 ...describeBuilding(building, null, i),
-                vertexStart: palettes.height.length / 3 - vertexCount,
+                vertexStart: 0,
                 vertexCount
             });
         }
@@ -206,17 +205,15 @@ export async function buildBuildings({ scene, buildings, maxHeight, minGround, m
     setProgress(87, 'Zusammenführen…');
     await new Promise((resolve) => setTimeout(resolve, 0));
 
-    let totalVertices = 0;
-    let totalIndices = 0;
-    for (const geometry of geoList) {
-        totalVertices += geometry.attributes.position.count;
-        totalIndices += geometry.index ? geometry.index.count : geometry.attributes.position.count;
-    }
-
     const positions = new Float32Array(totalVertices * 3);
     const normals = new Float32Array(totalVertices * 3);
     const colors = new Float32Array(totalVertices * 3);
     const indices = new Uint32Array(totalIndices);
+    const palettes = {
+        height: new Float32Array(totalVertices * 3),
+        era: new Float32Array(totalVertices * 3),
+        ground: new Float32Array(totalVertices * 3)
+    };
 
     let vertexOffset = 0;
     let indexOffset = 0;
@@ -224,18 +221,16 @@ export async function buildBuildings({ scene, buildings, maxHeight, minGround, m
     for (let i = 0; i < geoList.length; i++) {
         const geometry = geoList[i];
         const meta = buildingMeta[i];
+        const palette = paletteList[i];
         const indicesStart = indexOffset;
+        const colorOffset = vertexOffset * 3;
 
-        positions.set(geometry.attributes.position.array, vertexOffset * 3);
-        if (geometry.attributes.normal) normals.set(geometry.attributes.normal.array, vertexOffset * 3);
-
-        for (let vertex = 0; vertex < meta.vertexCount; vertex++) {
-            const targetBase = (vertexOffset + vertex) * 3;
-            const sourceBase = (meta.vertexStart + vertex) * 3;
-            colors[targetBase] = palettes.height[sourceBase];
-            colors[targetBase + 1] = palettes.height[sourceBase + 1];
-            colors[targetBase + 2] = palettes.height[sourceBase + 2];
-        }
+        positions.set(geometry.attributes.position.array, colorOffset);
+        if (geometry.attributes.normal) normals.set(geometry.attributes.normal.array, colorOffset);
+        copyPalette(palettes.height, colorOffset, palette.height);
+        copyPalette(palettes.era, colorOffset, palette.era);
+        copyPalette(palettes.ground, colorOffset, palette.ground);
+        copyPalette(colors, colorOffset, palette.height);
 
         if (geometry.index) {
             const geometryIndices = geometry.index.array;
@@ -246,6 +241,7 @@ export async function buildBuildings({ scene, buildings, maxHeight, minGround, m
             indexOffset += meta.vertexCount;
         }
 
+        meta.vertexStart = vertexOffset;
         meta.triangleStart = indicesStart / 3;
         meta.triangleEnd = indexOffset / 3;
 
@@ -314,11 +310,13 @@ export function buildRankingView({ scene, buildings, maxHeight, minGround, maxGr
         mesh.userData.meta = describeBuilding(building, index + 1, sourceIndex);
         group.add(mesh);
 
-        return {
+        const item = {
             mesh,
             meta: mesh.userData.meta,
             palettes: paletteSet
         };
+        mesh.userData.rankingItem = item;
+        return item;
     });
 
     scene.add(group);
@@ -404,17 +402,12 @@ export function setMapHighlight({ mesh, meta, sourceColors, minHeight, active, m
         return;
     }
 
+    const invMix = 1 - mix;
     for (let vertex = 0; vertex < meta.vertexCount; vertex++) {
         const base = (meta.vertexStart + vertex) * 3;
-        const sourceColor = new THREE.Color(
-            sourceColors[base],
-            sourceColors[base + 1],
-            sourceColors[base + 2]
-        );
-        sourceColor.lerp(MAP_HIGHLIGHT, mix);
-        target[base] = sourceColor.r;
-        target[base + 1] = sourceColor.g;
-        target[base + 2] = sourceColor.b;
+        target[base] = sourceColors[base] * invMix + MAP_HIGHLIGHT.r * mix;
+        target[base + 1] = sourceColors[base + 1] * invMix + MAP_HIGHLIGHT.g * mix;
+        target[base + 2] = sourceColors[base + 2] * invMix + MAP_HIGHLIGHT.b * mix;
     }
 
     colorAttribute.needsUpdate = true;

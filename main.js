@@ -95,11 +95,17 @@ function updatePinnedPulse() {
 
 function createSearchEntries() {
     return state.buildingMeta
-        .map((meta) => ({
-            ...meta,
-            bin: meta.bin ?? '',
-            name: meta.name ?? ''
-        }))
+        .map((meta) => {
+            const bin = meta.bin ?? '';
+            const name = meta.name ?? '';
+            return {
+                ...meta,
+                bin,
+                name,
+                searchBin: bin.toLowerCase(),
+                searchName: name.toLowerCase()
+            };
+        })
         .filter((meta) => meta.bin || meta.name)
         .sort((a, b) => b.height - a.height);
 }
