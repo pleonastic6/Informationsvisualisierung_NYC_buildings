@@ -199,61 +199,6 @@ export function createRankingLabelController({ camera, getState }) {
     };
 }
 
-export function createMapLabelController({ camera, getState }) {
-    const root = document.createElement('div');
-    root.id = 'map-landmark-labels';
-    document.body.appendChild(root);
-
-    const labels = [];
-    const temp = new THREE.Vector3();
-
-    function makeLabel(meta) {
-        const el = document.createElement('div');
-        el.className = 'map-landmark-label';
-        el.innerHTML = `<span class="map-landmark-name">${meta.name}</span>${meta.bin ? `<span class="map-landmark-bin">BIN ${meta.bin}</span>` : ''}`;
-        root.appendChild(el);
-        return { meta, el };
-    }
-
-    return {
-        setItems(items) {
-            root.innerHTML = '';
-            labels.length = 0;
-            items.forEach((item) => labels.push(makeLabel(item)));
-        },
-        update() {
-            const state = getState();
-            const visible = state.viewMode === 'map' && state.transitionProgress < 0.4;
-
-            labels.forEach(({ meta, el }) => {
-                if (!visible || meta.height < state.minHeight) {
-                    el.style.opacity = '0';
-                    return;
-                }
-
-                temp.set(meta.building.x, meta.building.g * 0.02 + meta.height * 0.11 + 4, meta.building.z);
-                temp.project(camera);
-
-                if (temp.z < -1 || temp.z > 1) {
-                    el.style.opacity = '0';
-                    return;
-                }
-
-                const x = (temp.x * 0.5 + 0.5) * window.innerWidth;
-                const y = (-temp.y * 0.5 + 0.5) * window.innerHeight;
-
-                if (x < 24 || x > window.innerWidth - 24 || y < 24 || y > window.innerHeight - 24) {
-                    el.style.opacity = '0';
-                    return;
-                }
-
-                el.style.transform = `translate(${x}px, ${y}px) translate(-50%, -100%)`;
-                el.style.opacity = '1';
-            });
-        }
-    };
-}
-
 export function createSearchController({ getSearchState, onSelect }) {
     const input = document.getElementById('building-search-input');
     const results = document.getElementById('building-search-results');

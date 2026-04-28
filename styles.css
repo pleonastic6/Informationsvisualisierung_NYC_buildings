@@ -484,13 +484,6 @@ input[type=range]::-webkit-slider-thumb {
     pointer-events: none;
 }
 
-#map-landmark-labels {
-    position: fixed;
-    inset: 0;
-    pointer-events: none;
-    z-index: 12;
-}
-
 .ranking-label {
     position: absolute;
     padding: 6px 10px;
@@ -517,37 +510,6 @@ input[type=range]::-webkit-slider-thumb {
 .ranking-label-height {
     color: var(--muted);
     font-size: 8px;
-    letter-spacing: .16em;
-}
-
-.map-landmark-label {
-    position: absolute;
-    padding: 6px 10px;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    border-radius: 12px;
-    background: rgba(8, 9, 14, 0.72);
-    backdrop-filter: blur(10px);
-    box-shadow: var(--shadow);
-    white-space: nowrap;
-    opacity: 0;
-    transition: opacity .12s ease;
-}
-
-.map-landmark-name,
-.map-landmark-bin {
-    display: block;
-}
-
-.map-landmark-name {
-    font-size: 9px;
-    color: var(--text);
-    letter-spacing: .1em;
-}
-
-.map-landmark-bin {
-    margin-top: 4px;
-    font-size: 7px;
-    color: var(--muted);
     letter-spacing: .16em;
 }
 

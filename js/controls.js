@@ -71,6 +71,12 @@ export function createControls(camera) {
         );
     }
 
+    function isTypingTarget(target) {
+        if (!target) return false;
+        const tag = target.tagName?.toLowerCase();
+        return tag === 'input' || tag === 'textarea' || target.isContentEditable;
+    }
+
     function easeInOutCubic(t) {
         return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
     }
@@ -86,32 +92,37 @@ export function createControls(camera) {
         }
 
         const dir = getDirection();
+        const flatDir = new THREE.Vector3(dir.x, 0, dir.z).normalize();
         const right = new THREE.Vector3(-Math.cos(camYaw), 0, Math.sin(camYaw));
 
         if (!cinematicActive) {
-            if (keys.w || keys.W || keys.ArrowUp) camPos.addScaledVector(dir, CAM_SPEED);
-            if (keys.s || keys.S || keys.ArrowDown) camPos.addScaledVector(dir, -CAM_SPEED);
+            if (keys.w || keys.W || keys.ArrowUp) camPos.addScaledVector(flatDir, CAM_SPEED);
+            if (keys.s || keys.S || keys.ArrowDown) camPos.addScaledVector(flatDir, -CAM_SPEED);
             if (keys.a || keys.A || keys.ArrowLeft) camPos.addScaledVector(right, -CAM_SPEED);
             if (keys.d || keys.D || keys.ArrowRight) camPos.addScaledVector(right, CAM_SPEED);
             if (keys.q || keys.Q) camPos.y += CAM_SPEED;
             if (keys.e || keys.E) camPos.y -= CAM_SPEED;
         }
 
+        camPos.y = Math.max(8, camPos.y);
+
         camera.position.copy(camPos);
         camera.lookAt(camPos.clone().addScaledVector(dir, 100));
     }
 
     document.addEventListener('keydown', (event) => {
+        if (isTypingTarget(event.target)) return;
         stopCinematic();
         keys[event.key] = true;
     });
 
     document.addEventListener('keyup', (event) => {
+        if (isTypingTarget(event.target)) return;
         keys[event.key] = false;
     });
 
     document.addEventListener('mousedown', (event) => {
-        if (event.target.id === 'height-filter') return;
+        if (event.target.id === 'height-filter' || isTypingTarget(event.target)) return;
         stopCinematic();
         if (event.button === 0) {
             mouseDown = true;
@@ -134,9 +145,18 @@ export function createControls(camera) {
     });
 
     document.addEventListener('wheel', (event) => {
+        if (isTypingTarget(event.target)) return;
         stopCinematic();
         camPos.addScaledVector(getDirection(), -event.deltaY * 0.3);
+        camPos.y = Math.max(8, camPos.y);
     }, { passive: true });
+
+    window.addEventListener('blur', () => {
+        Object.keys(keys).forEach((key) => {
+            keys[key] = false;
+        });
+        mouseDown = false;
+    });
 
     document.addEventListener('contextmenu', (event) => event.preventDefault());
 

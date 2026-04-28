@@ -10,7 +10,6 @@ import { createScene } from './js/scene.js';
 import { buildStreets } from './js/streets.js';
 import {
     bindHeightFilter,
-    createMapLabelController,
     createModeController,
     createRankingLabelController,
     createSearchController,
@@ -47,14 +46,12 @@ const state = {
     hoveredMapMeta: null,
     hoveredRankingItem: null,
     pinnedMapMeta: null,
-    landmarkItems: [],
     searchEntries: []
 };
 
 const { scene, camera, renderer } = createScene();
 const controls = createControls(camera);
 const rankingLabels = createRankingLabelController({ camera, getState: () => state });
-const mapLabels = createMapLabelController({ camera, getState: () => ({ ...state, minHeight: getMinHeightFilter() }) });
 
 function clearMapMetaHighlight(meta) {
     if (!meta || !state.mesh) return;
@@ -78,25 +75,6 @@ function setMapMetaHighlight(meta, active = true) {
     });
 }
 
-function isLandmarkName(name = '') {
-    const needle = name.toLowerCase();
-    return [
-        'empire state',
-        'trump',
-        'chrysler',
-        'world trade',
-        'woolworth',
-        'rockefeller',
-        'flatiron',
-        'trinity church',
-        'grand central',
-        'new york stock exchange',
-        'custom house',
-        'plaza',
-        'times square'
-    ].some((part) => needle.includes(part));
-}
-
 function createSearchEntries() {
     return state.buildingMeta
         .map((meta) => ({
@@ -106,13 +84,6 @@ function createSearchEntries() {
         }))
         .filter((meta) => meta.bin || meta.name)
         .sort((a, b) => b.height - a.height);
-}
-
-function createLandmarkItems() {
-    return state.buildingMeta
-        .filter((meta) => meta.name && (meta.height >= 150 || isLandmarkName(meta.name)))
-        .sort((a, b) => b.height - a.height)
-        .slice(0, 28);
 }
 
 function focusBuilding(meta) {
@@ -278,7 +249,6 @@ function animate() {
     controls.updateCamera();
     updateViewTransition();
     rankingLabels.update();
-    mapLabels.update();
     renderer.render(scene, camera);
 }
 
@@ -355,8 +325,6 @@ async function init() {
     });
     rankingLabels.setItems(state.rankingItems);
     state.searchEntries = createSearchEntries();
-    state.landmarkItems = createLandmarkItems();
-    mapLabels.setItems(state.landmarkItems);
     state.rankingStats = {
         count: rankingResult.items.length,
         maxHeight: rankingResult.items[0]?.meta.height ?? 0,
