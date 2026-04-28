@@ -68,13 +68,35 @@ function createPaletteSet(building, maxHeight, minGround, maxGround, vertexCount
 }
 
 function describeBuilding(building, rank = null, sourceIndex = null) {
+    let minX = Infinity;
+    let maxX = -Infinity;
+    let minZ = Infinity;
+    let maxZ = -Infinity;
+
+    for (let i = 0; i < building.ext.length; i += 2) {
+        const x = building.ext[i];
+        const z = building.ext[i + 1];
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (z < minZ) minZ = z;
+        if (z > maxZ) maxZ = z;
+    }
+
+    const footprintWidth = maxX - minX;
+    const footprintDepth = maxZ - minZ;
+
     return {
         building,
         rank,
         sourceIndex,
         height: building.h,
         era: building.era,
-        eraLabel: ERA_LABELS[building.era] ?? ERA_LABELS[0]
+        eraLabel: ERA_LABELS[building.era] ?? ERA_LABELS[0],
+        centerX: (minX + maxX) * 0.5,
+        centerZ: (minZ + maxZ) * 0.5,
+        footprintWidth,
+        footprintDepth,
+        footprintRadius: Math.max(8, Math.hypot(footprintWidth, footprintDepth) * 0.5)
     };
 }
 

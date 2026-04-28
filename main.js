@@ -97,7 +97,7 @@ function focusBuilding(meta) {
     clearHighlights();
     hideTooltip();
     controls.transitionToView('map');
-    controls.focusOnBuilding(meta.building);
+    controls.focusOnBuilding(meta);
     viewController.applyViewMode('map');
     setMapMetaHighlight(meta, true);
 }

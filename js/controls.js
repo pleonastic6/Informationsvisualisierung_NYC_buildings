@@ -167,12 +167,20 @@ export function createControls(camera) {
         transitionToView(view) {
             startCinematic(view);
         },
-        focusOnBuilding(building) {
-            const height = Math.max(28, building.h * 0.42);
-            const distance = Math.max(110, Math.min(260, building.h * 1.15 + 90));
-            const target = new THREE.Vector3(building.x, building.g * 0.02 + height * 0.3, building.z);
-            const offset = new THREE.Vector3(-distance * 0.52, height, distance * 0.84);
-            const pos = target.clone().add(offset);
+        focusOnBuilding(meta) {
+            const baseHeight = meta.building.g * 0.02;
+            const targetHeight = Math.max(10, Math.min(38, meta.height * 0.1));
+            const cameraHeight = Math.max(30, Math.min(120, meta.height * 0.28 + 24));
+            const distance = Math.max(50, Math.min(220, meta.footprintRadius * 2.8 + meta.height * 0.18 + 30));
+            const target = new THREE.Vector3(meta.centerX, baseHeight + targetHeight, meta.centerZ);
+
+            const currentDir = getDirection();
+            const horizontalDir = new THREE.Vector3(currentDir.x, 0, currentDir.z);
+            if (horizontalDir.lengthSq() < 1e-6) horizontalDir.set(0, 0, 1);
+            horizontalDir.normalize();
+
+            const pos = target.clone().addScaledVector(horizontalDir, -distance);
+            pos.y = baseHeight + cameraHeight;
             const angles = anglesFromLookAt(pos, target);
 
             cinematicFrom.pos.copy(camPos);
