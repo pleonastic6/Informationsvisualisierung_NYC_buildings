@@ -295,7 +295,8 @@ createHoverController({
         mapMesh: state.mesh,
         mapMeta: state.buildingMeta,
         rankingItems: state.rankingItems,
-        minHeight: getMinHeightFilter()
+        minHeight: getMinHeightFilter(),
+        cameraBusy: controls.isBusy()
     }),
     onHover: handleHover,
     onLeave: () => {

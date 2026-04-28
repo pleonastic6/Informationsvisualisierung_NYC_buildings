@@ -36,6 +36,11 @@ export function createControls(camera) {
     let camYaw = MAP_VIEW.yaw;
     let camPitch = MAP_VIEW.pitch;
     const camPos = MAP_VIEW.pos.clone();
+    const lastCameraPos = camPos.clone();
+    let lastCameraYaw = camYaw;
+    let lastCameraPitch = camPitch;
+    let lastInteractionAt = 0;
+    let cameraMoving = false;
 
     let cinematicActive = false;
     const cinematicFrom = {
@@ -50,9 +55,14 @@ export function createControls(camera) {
     };
     let cinematicProgress = 1;
 
+    function markInteraction() {
+        lastInteractionAt = performance.now();
+    }
+
     function stopCinematic() {
         cinematicActive = false;
         cinematicProgress = 1;
+        markInteraction();
     }
 
     function startCinematic(view) {
@@ -89,6 +99,7 @@ export function createControls(camera) {
 
     function updateCamera() {
         if (cinematicActive) {
+            markInteraction();
             cinematicProgress = Math.min(1, cinematicProgress + 0.035);
             const eased = easeInOutCubic(cinematicProgress);
             camPos.lerpVectors(cinematicFrom.pos, cinematicTo.pos, eased);
@@ -112,6 +123,15 @@ export function createControls(camera) {
 
         camPos.y = Math.max(8, camPos.y);
 
+        cameraMoving = cinematicActive
+            || camPos.distanceToSquared(lastCameraPos) > 0.0001
+            || Math.abs(camYaw - lastCameraYaw) > 0.0001
+            || Math.abs(camPitch - lastCameraPitch) > 0.0001;
+
+        lastCameraPos.copy(camPos);
+        lastCameraYaw = camYaw;
+        lastCameraPitch = camPitch;
+
         camera.position.copy(camPos);
         camera.lookAt(camPos.clone().addScaledVector(dir, 100));
     }
@@ -120,16 +140,19 @@ export function createControls(camera) {
         if (isTypingTarget(event.target)) return;
         stopCinematic();
         keys[event.key] = true;
+        markInteraction();
     });
 
     document.addEventListener('keyup', (event) => {
         if (isTypingTarget(event.target)) return;
         keys[event.key] = false;
+        markInteraction();
     });
 
     document.addEventListener('mousedown', (event) => {
         if (event.target.id === 'height-filter' || isTypingTarget(event.target)) return;
         stopCinematic();
+        markInteraction();
         if (event.button === 0) {
             mouseDown = true;
             lastMouse = { x: event.clientX, y: event.clientY };
@@ -138,11 +161,13 @@ export function createControls(camera) {
 
     document.addEventListener('mouseup', (event) => {
         if (event.button === 0) mouseDown = false;
+        markInteraction();
     });
 
     document.addEventListener('mousemove', (event) => {
         if (!mouseDown) return;
         stopCinematic();
+        markInteraction();
         const dx = event.clientX - lastMouse.x;
         const dy = event.clientY - lastMouse.y;
         lastMouse = { x: event.clientX, y: event.clientY };
@@ -153,6 +178,7 @@ export function createControls(camera) {
     document.addEventListener('wheel', (event) => {
         if (isTypingTarget(event.target)) return;
         stopCinematic();
+        markInteraction();
         camPos.addScaledVector(getDirection(), -event.deltaY * 0.3);
         camPos.y = Math.max(8, camPos.y);
     }, { passive: true });
@@ -197,13 +223,17 @@ export function createControls(camera) {
             cinematicProgress = 0;
             cinematicActive = true;
         },
+        isBusy() {
+            return cameraMoving || mouseDown || (performance.now() - lastInteractionAt) < 180;
+        },
         getDebugState() {
             return {
                 x: camPos.x,
                 y: camPos.y,
                 z: camPos.z,
                 yaw: camYaw,
-                pitch: camPitch
+                pitch: camPitch,
+                busy: cameraMoving || mouseDown
             };
         }
     };

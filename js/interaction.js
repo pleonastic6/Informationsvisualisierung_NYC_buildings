@@ -3,6 +3,7 @@ const THREE = window.THREE;
 import { findBuildingMetaByFaceIndex } from './buildings.js';
 
 const HOVER_SAMPLE_MS = 90;
+const MAP_HOVER_SAMPLE_MS = 140;
 const HOVER_DELAY_MS = 320;
 
 export function createHoverController({ camera, getInteractiveState, onHover, onLeave }) {
@@ -45,9 +46,9 @@ export function createHoverController({ camera, getInteractiveState, onHover, on
         pointer.y = -(event.clientY / window.innerHeight) * 2 + 1;
     }
 
-    function scheduleSample() {
+    function scheduleSample(delay = HOVER_SAMPLE_MS) {
         if (sampleTimer) return;
-        sampleTimer = setTimeout(processHover, HOVER_SAMPLE_MS);
+        sampleTimer = setTimeout(processHover, delay);
     }
 
     function processHover() {
@@ -76,6 +77,8 @@ export function createHoverController({ camera, getInteractiveState, onHover, on
                 meta = hit.object.userData.meta;
                 type = 'ranking';
             }
+        } else if (state.cameraBusy) {
+            return clearHover();
         } else if (state.mapMesh && state.mapMesh.visible) {
             const hits = raycaster.intersectObject(state.mapMesh, false);
             const hit = hits[0];
@@ -100,12 +103,12 @@ export function createHoverController({ camera, getInteractiveState, onHover, on
                 hovering = false;
                 onLeave();
             }
-            scheduleSample();
+            scheduleSample(type === 'map' ? MAP_HOVER_SAMPLE_MS : HOVER_SAMPLE_MS);
             return;
         }
 
         if (!hovering && now - pendingSince < HOVER_DELAY_MS) {
-            scheduleSample();
+            scheduleSample(type === 'map' ? MAP_HOVER_SAMPLE_MS : HOVER_SAMPLE_MS);
             return;
         }
 
@@ -120,7 +123,9 @@ export function createHoverController({ camera, getInteractiveState, onHover, on
     window.addEventListener('mousemove', (event) => {
         lastEvent = event;
         updatePointer(event);
-        scheduleSample();
+        const state = getInteractiveState();
+        const delay = state?.viewMode === 'map' ? MAP_HOVER_SAMPLE_MS : HOVER_SAMPLE_MS;
+        scheduleSample(delay);
     });
 
     window.addEventListener('mouseleave', clearHover);
