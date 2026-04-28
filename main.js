@@ -1,3 +1,5 @@
+const THREE = window.THREE;
+
 import {
     buildBuildings,
     buildRankingView,
@@ -46,15 +48,67 @@ const state = {
     hoveredMapMeta: null,
     hoveredRankingItem: null,
     pinnedMapMeta: null,
+    focusMarker: null,
     searchEntries: []
 };
 
 const { scene, camera, renderer } = createScene();
 const controls = createControls(camera);
+state.focusMarker = createFocusMarker();
 const rankingLabels = createRankingLabelController({ camera, getState: () => state });
 
 function getFocusTarget(meta) {
     return { x: meta.centerX, z: -meta.centerZ };
+}
+
+function createFocusMarker() {
+    const group = new THREE.Group();
+    group.visible = false;
+
+    const ring = new THREE.Mesh(
+        new THREE.RingGeometry(1.2, 1.8, 48),
+        new THREE.MeshBasicMaterial({
+            color: 0xffb3dc,
+            transparent: true,
+            opacity: 0.85,
+            side: THREE.DoubleSide,
+            depthWrite: false
+        })
+    );
+    ring.rotation.x = -Math.PI / 2;
+    group.add(ring);
+
+    const halo = new THREE.Mesh(
+        new THREE.RingGeometry(1.9, 2.6, 48),
+        new THREE.MeshBasicMaterial({
+            color: 0xff7cc3,
+            transparent: true,
+            opacity: 0.28,
+            side: THREE.DoubleSide,
+            depthWrite: false
+        })
+    );
+    halo.rotation.x = -Math.PI / 2;
+    halo.position.y = 0.02;
+    group.add(halo);
+
+    scene.add(group);
+    return { group, ring, halo };
+}
+
+function updateFocusMarker(meta) {
+    if (!state.focusMarker) return;
+    if (!meta) {
+        state.focusMarker.group.visible = false;
+        return;
+    }
+
+    const baseHeight = meta.building.g * 0.02 + 0.24;
+    const radius = Math.max(8, meta.footprintRadius * 0.45);
+    state.focusMarker.group.visible = true;
+    state.focusMarker.group.position.set(meta.centerX, baseHeight, -meta.centerZ);
+    state.focusMarker.ring.scale.setScalar(radius);
+    state.focusMarker.halo.scale.setScalar(radius * 1.22);
 }
 
 function clearMapMetaHighlight(meta) {
@@ -81,16 +135,16 @@ function setMapMetaHighlight(meta, active = true) {
 }
 
 function updatePinnedPulse() {
-    if (!state.pinnedMapMeta || !state.mesh) return;
-    const pulse = 0.38 + ((Math.sin(performance.now() * 0.006) + 1) * 0.5) * 0.37;
-    setMapHighlight({
-        mesh: state.mesh,
-        meta: state.pinnedMapMeta,
-        sourceColors: state.palettes[state.currentMode],
-        minHeight: getMinHeightFilter(),
-        active: true,
-        mix: pulse
-    });
+    if (!state.pinnedMapMeta || !state.focusMarker) return;
+    const pulse = (Math.sin(performance.now() * 0.006) + 1) * 0.5;
+    const baseRadius = Math.max(8, state.pinnedMapMeta.footprintRadius * 0.45);
+    const scale = 1 + pulse * 0.18;
+    state.focusMarker.group.visible = state.viewMode === 'map';
+    state.focusMarker.group.position.y = state.pinnedMapMeta.building.g * 0.02 + 0.24;
+    state.focusMarker.ring.scale.setScalar(baseRadius * scale);
+    state.focusMarker.halo.scale.setScalar(baseRadius * (1.18 + pulse * 0.28));
+    state.focusMarker.ring.material.opacity = 0.55 + pulse * 0.25;
+    state.focusMarker.halo.material.opacity = 0.12 + pulse * 0.16;
 }
 
 function createSearchEntries() {
@@ -125,6 +179,7 @@ function focusBuilding(meta) {
     controls.focusOnBuilding(meta, target);
     viewController.applyViewMode('map');
     setMapMetaHighlight(meta, true);
+    updateFocusMarker(meta);
 }
 
 function updateVisibleStats() {
@@ -206,6 +261,10 @@ function updateViewTransition() {
         state.rankingItems.forEach((item) => {
             item.mesh.material.opacity = item.mesh.visible ? Math.max(0.05, rankingAlpha) : 0;
         });
+    }
+
+    if (state.focusMarker?.group) {
+        state.focusMarker.group.visible = Boolean(state.pinnedMapMeta) && mapAlpha > 0.02;
     }
 }
 
