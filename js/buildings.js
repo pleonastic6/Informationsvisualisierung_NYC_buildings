@@ -383,7 +383,7 @@ export function updateRankingView({ rankingItems, mode, minHeight }) {
     }
 }
 
-export function setMapHighlight({ mesh, meta, sourceColors, minHeight, active }) {
+export function setMapHighlight({ mesh, meta, sourceColors, minHeight, active, mix = 0.4 }) {
     if (!mesh || !meta) return;
 
     const colorAttribute = mesh.geometry.attributes.color;
@@ -411,7 +411,7 @@ export function setMapHighlight({ mesh, meta, sourceColors, minHeight, active })
             sourceColors[base + 1],
             sourceColors[base + 2]
         );
-        sourceColor.lerp(MAP_HIGHLIGHT, 0.4);
+        sourceColor.lerp(MAP_HIGHLIGHT, mix);
         target[base] = sourceColor.r;
         target[base + 1] = sourceColor.g;
         target[base + 2] = sourceColor.b;

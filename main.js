@@ -50,7 +50,7 @@ const state = {
     hoveredRankingItem: null,
     pinnedMapMeta: null,
     searchEntries: [],
-    focusDebugMode: 'center'
+    focusDebugMode: 'flipZ'
 };
 
 const { scene, camera, renderer } = createScene();
@@ -123,7 +123,21 @@ function setMapMetaHighlight(meta, active = true) {
         meta,
         sourceColors: state.palettes[state.currentMode],
         minHeight: getMinHeightFilter(),
-        active
+        active,
+        mix: 0.4
+    });
+}
+
+function updatePinnedPulse() {
+    if (!state.pinnedMapMeta || !state.mesh) return;
+    const pulse = 0.38 + ((Math.sin(performance.now() * 0.006) + 1) * 0.5) * 0.37;
+    setMapHighlight({
+        mesh: state.mesh,
+        meta: state.pinnedMapMeta,
+        sourceColors: state.palettes[state.currentMode],
+        minHeight: getMinHeightFilter(),
+        active: true,
+        mix: pulse
     });
 }
 
@@ -304,6 +318,7 @@ function animate() {
     requestAnimationFrame(animate);
     controls.updateCamera();
     updateViewTransition();
+    updatePinnedPulse();
     rankingLabels.update();
     renderer.render(scene, camera);
 }
