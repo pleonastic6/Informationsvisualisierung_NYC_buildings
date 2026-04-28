@@ -2,20 +2,39 @@ const THREE = window.THREE;
 
 import { findBuildingMetaByFaceIndex } from './buildings.js';
 
+const HOVER_SAMPLE_MS = 90;
+const HOVER_DELAY_MS = 320;
+
 export function createHoverController({ camera, getInteractiveState, onHover, onLeave }) {
     const raycaster = new THREE.Raycaster();
     const pointer = new THREE.Vector2();
     let hovering = false;
     let cachedRankingItems = [];
     let cachedRankingMeshes = [];
-    let rafPending = false;
+    let sampleTimer = null;
     let lastEvent = null;
     let lastHoverMeta = null;
     let lastHoverType = null;
+    let pendingMeta = null;
+    let pendingType = null;
+    let pendingItem = null;
+    let pendingSince = 0;
+
+    function resetPending() {
+        pendingMeta = null;
+        pendingType = null;
+        pendingItem = null;
+        pendingSince = 0;
+    }
 
     function clearHover() {
+        resetPending();
         lastHoverMeta = null;
         lastHoverType = null;
+        if (sampleTimer) {
+            clearTimeout(sampleTimer);
+            sampleTimer = null;
+        }
         if (!hovering) return;
         hovering = false;
         onLeave();
@@ -26,8 +45,13 @@ export function createHoverController({ camera, getInteractiveState, onHover, on
         pointer.y = -(event.clientY / window.innerHeight) * 2 + 1;
     }
 
+    function scheduleSample() {
+        if (sampleTimer) return;
+        sampleTimer = setTimeout(processHover, HOVER_SAMPLE_MS);
+    }
+
     function processHover() {
-        rafPending = false;
+        sampleTimer = null;
         const event = lastEvent;
         if (!event) return;
 
@@ -36,45 +60,67 @@ export function createHoverController({ camera, getInteractiveState, onHover, on
 
         raycaster.setFromCamera(pointer, camera);
 
+        let meta = null;
+        let type = null;
+        let item = null;
+
         if (state.viewMode === 'ranking') {
             if (cachedRankingItems !== state.rankingItems) {
                 cachedRankingItems = state.rankingItems;
-                cachedRankingMeshes = cachedRankingItems.map((item) => item.mesh);
+                cachedRankingMeshes = cachedRankingItems.map((entry) => entry.mesh);
             }
             const hits = raycaster.intersectObjects(cachedRankingMeshes, false);
             const hit = hits[0];
-            if (!hit || !hit.object.visible) return clearHover();
-            const item = hit.object.userData.rankingItem ?? null;
-            const meta = hit.object.userData.meta;
-            if (hovering && lastHoverType === 'ranking' && lastHoverMeta === meta) return;
-            hovering = true;
-            lastHoverMeta = meta;
-            lastHoverType = 'ranking';
-            onHover(meta, { x: event.clientX, y: event.clientY }, { type: 'ranking', item });
+            if (hit && hit.object.visible) {
+                item = hit.object.userData.rankingItem ?? null;
+                meta = hit.object.userData.meta;
+                type = 'ranking';
+            }
+        } else if (state.mapMesh && state.mapMesh.visible) {
+            const hits = raycaster.intersectObject(state.mapMesh, false);
+            const hit = hits[0];
+            if (hit) {
+                const foundMeta = findBuildingMetaByFaceIndex(state.mapMeta, hit.faceIndex);
+                if (foundMeta && foundMeta.height >= state.minHeight) {
+                    meta = foundMeta;
+                    type = 'map';
+                }
+            }
+        }
+
+        if (!meta || !type) return clearHover();
+
+        const now = performance.now();
+        if (pendingMeta !== meta || pendingType !== type) {
+            pendingMeta = meta;
+            pendingType = type;
+            pendingItem = item;
+            pendingSince = now;
+            if (hovering && (lastHoverMeta !== meta || lastHoverType !== type)) {
+                hovering = false;
+                onLeave();
+            }
+            scheduleSample();
             return;
         }
 
-        if (!state.mapMesh || !state.mapMesh.visible) return clearHover();
-        const hits = raycaster.intersectObject(state.mapMesh, false);
-        const hit = hits[0];
-        if (!hit) return clearHover();
+        if (!hovering && now - pendingSince < HOVER_DELAY_MS) {
+            scheduleSample();
+            return;
+        }
 
-        const meta = findBuildingMetaByFaceIndex(state.mapMeta, hit.faceIndex);
-        if (!meta || meta.height < state.minHeight) return clearHover();
-        if (hovering && lastHoverType === 'map' && lastHoverMeta === meta) return;
+        if (hovering && lastHoverMeta === meta && lastHoverType === type) return;
 
         hovering = true;
         lastHoverMeta = meta;
-        lastHoverType = 'map';
-        onHover(meta, { x: event.clientX, y: event.clientY }, { type: 'map', meta });
+        lastHoverType = type;
+        onHover(meta, { x: event.clientX, y: event.clientY }, type === 'ranking' ? { type, item: pendingItem } : { type, meta });
     }
 
     window.addEventListener('mousemove', (event) => {
         lastEvent = event;
         updatePointer(event);
-        if (rafPending) return;
-        rafPending = true;
-        requestAnimationFrame(processHover);
+        scheduleSample();
     });
 
     window.addEventListener('mouseleave', clearHover);
