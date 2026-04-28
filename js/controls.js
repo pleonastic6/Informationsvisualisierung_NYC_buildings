@@ -147,6 +147,23 @@ export function createControls(camera) {
         transitionToView(view) {
             startCinematic(view);
         },
+        focusOnBuilding(building) {
+            const height = Math.max(28, building.h * 0.42);
+            const distance = Math.max(110, Math.min(260, building.h * 1.15 + 90));
+            const target = new THREE.Vector3(building.x, building.g * 0.02 + height * 0.3, building.z);
+            const offset = new THREE.Vector3(-distance * 0.52, height, distance * 0.84);
+            const pos = target.clone().add(offset);
+            const angles = anglesFromLookAt(pos, target);
+
+            cinematicFrom.pos.copy(camPos);
+            cinematicFrom.yaw = camYaw;
+            cinematicFrom.pitch = camPitch;
+            cinematicTo.pos.copy(pos);
+            cinematicTo.yaw = angles.yaw;
+            cinematicTo.pitch = angles.pitch;
+            cinematicProgress = 0;
+            cinematicActive = true;
+        },
         getDebugState() {
             return {
                 x: camPos.x,

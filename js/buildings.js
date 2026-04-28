@@ -67,10 +67,11 @@ function createPaletteSet(building, maxHeight, minGround, maxGround, vertexCount
     return palette;
 }
 
-function describeBuilding(building, rank = null) {
+function describeBuilding(building, rank = null, sourceIndex = null) {
     return {
         building,
         rank,
+        sourceIndex,
         height: building.h,
         era: building.era,
         eraLabel: ERA_LABELS[building.era] ?? ERA_LABELS[0]
@@ -148,7 +149,7 @@ export async function buildBuildings({ scene, buildings, maxHeight, minGround, m
 
             geoList.push(geometry);
             buildingMeta.push({
-                ...describeBuilding(building),
+                ...describeBuilding(building, null, i),
                 vertexStart: palettes.height.length / 3 - vertexCount,
                 vertexCount
             });
@@ -234,8 +235,9 @@ export function buildRankingView({ scene, buildings, maxHeight, minGround, maxGr
     const group = new THREE.Group();
     group.visible = false;
 
-    const topBuildings = [...buildings]
-        .sort((a, b) => b.h - a.h)
+    const topBuildings = buildings
+        .map((building, index) => ({ building, sourceIndex: index }))
+        .sort((a, b) => b.building.h - a.building.h)
         .slice(0, RANKING_LIMIT);
 
     const rowCount = Math.ceil(topBuildings.length / GRID_COLUMNS);
@@ -247,7 +249,7 @@ export function buildRankingView({ scene, buildings, maxHeight, minGround, maxGr
     const stage = createRankingStage(stageWidth, stageDepth);
     group.add(stage);
 
-    const items = topBuildings.map((building, index) => {
+    const items = topBuildings.map(({ building, sourceIndex }, index) => {
         const geometry = buildGeometry(building, { centered: true });
         const paletteSet = createPaletteSet(building, maxHeight, minGround, maxGround, geometry.attributes.position.count);
         geometry.setAttribute('color', new THREE.BufferAttribute(paletteSet.height.slice(), 3));
@@ -265,7 +267,7 @@ export function buildRankingView({ scene, buildings, maxHeight, minGround, maxGr
 
         mesh.position.set(column * GRID_SPACING - xOffset, 0, row * GRID_SPACING - zOffset);
         mesh.rotation.y = 0;
-        mesh.userData.meta = describeBuilding(building, index + 1);
+        mesh.userData.meta = describeBuilding(building, index + 1, sourceIndex);
         group.add(mesh);
 
         return {

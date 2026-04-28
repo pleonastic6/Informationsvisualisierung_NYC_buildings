@@ -133,9 +133,10 @@ export function bindHeightFilter(getFilterState, onAfterFilter) {
 
 export function showTooltip(meta, pointer) {
     const tooltip = document.getElementById('hover-tooltip');
-    const title = meta.rank ? `#${meta.rank}` : 'Gebäude';
+    const title = meta.name || (meta.rank ? `#${meta.rank}` : 'Gebäude');
     tooltip.innerHTML = `
         <div class="tooltip-title">${title}</div>
+        ${meta.bin ? `<div class="tooltip-row">BIN <span>${meta.bin}</span></div>` : ''}
         <div class="tooltip-row">Höhe <span>${meta.height.toFixed(1)} m</span></div>
         <div class="tooltip-row">Baujahr <span>${meta.eraLabel}</span></div>
     `;
@@ -194,6 +195,144 @@ export function createRankingLabelController({ camera, getState }) {
                 el.style.transform = `translate(${x}px, ${y}px) translate(-50%, -100%)`;
                 el.style.opacity = `${Math.max(0, Math.min(1, (state.transitionProgress - 0.55) / 0.35))}`;
             });
+        }
+    };
+}
+
+export function createMapLabelController({ camera, getState }) {
+    const root = document.createElement('div');
+    root.id = 'map-landmark-labels';
+    document.body.appendChild(root);
+
+    const labels = [];
+    const temp = new THREE.Vector3();
+
+    function makeLabel(meta) {
+        const el = document.createElement('div');
+        el.className = 'map-landmark-label';
+        el.innerHTML = `<span class="map-landmark-name">${meta.name}</span>${meta.bin ? `<span class="map-landmark-bin">BIN ${meta.bin}</span>` : ''}`;
+        root.appendChild(el);
+        return { meta, el };
+    }
+
+    return {
+        setItems(items) {
+            root.innerHTML = '';
+            labels.length = 0;
+            items.forEach((item) => labels.push(makeLabel(item)));
+        },
+        update() {
+            const state = getState();
+            const visible = state.viewMode === 'map' && state.transitionProgress < 0.4;
+
+            labels.forEach(({ meta, el }) => {
+                if (!visible || meta.height < state.minHeight) {
+                    el.style.opacity = '0';
+                    return;
+                }
+
+                temp.set(meta.building.x, meta.building.g * 0.02 + meta.height * 0.11 + 4, meta.building.z);
+                temp.project(camera);
+
+                if (temp.z < -1 || temp.z > 1) {
+                    el.style.opacity = '0';
+                    return;
+                }
+
+                const x = (temp.x * 0.5 + 0.5) * window.innerWidth;
+                const y = (-temp.y * 0.5 + 0.5) * window.innerHeight;
+
+                if (x < 24 || x > window.innerWidth - 24 || y < 24 || y > window.innerHeight - 24) {
+                    el.style.opacity = '0';
+                    return;
+                }
+
+                el.style.transform = `translate(${x}px, ${y}px) translate(-50%, -100%)`;
+                el.style.opacity = '1';
+            });
+        }
+    };
+}
+
+export function createSearchController({ getSearchState, onSelect }) {
+    const input = document.getElementById('building-search-input');
+    const results = document.getElementById('building-search-results');
+    const status = document.getElementById('building-search-status');
+    let activeResults = [];
+
+    function render(items, query, totalCount = items.length) {
+        activeResults = items;
+        results.innerHTML = '';
+
+        if (!query) {
+            status.textContent = 'Suche per BIN oder Name';
+            return;
+        }
+
+        if (!items.length) {
+            status.textContent = 'Nichts gefunden';
+            return;
+        }
+
+        status.textContent = `${totalCount} Treffer${totalCount > items.length ? '+' : ''}`;
+
+        items.forEach((item, index) => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'search-result';
+            button.innerHTML = `
+                <span class="search-result-title">${item.name || `BIN ${item.bin}`}</span>
+                <span class="search-result-meta">${item.bin ? `BIN ${item.bin}` : 'Ohne BIN'} · ${Math.round(item.height)} m</span>
+            `;
+            button.addEventListener('click', () => onSelect(item));
+            if (index === 0) button.dataset.default = 'true';
+            results.appendChild(button);
+        });
+    }
+
+    function updateResults() {
+        const query = input.value.trim().toLowerCase();
+        const { searchEntries } = getSearchState();
+        if (!query) return render([], '');
+
+        const digitQuery = query.replace(/\s+/g, '');
+        const matches = [];
+
+        for (const entry of searchEntries) {
+            const byBin = entry.bin && entry.bin.toLowerCase().includes(digitQuery);
+            const byName = entry.name && entry.name.toLowerCase().includes(query);
+            if (!byBin && !byName) continue;
+            matches.push(entry);
+        }
+
+        matches.sort((a, b) => {
+            const aExact = a.bin === digitQuery || a.name?.toLowerCase() === query;
+            const bExact = b.bin === digitQuery || b.name?.toLowerCase() === query;
+            if (aExact !== bExact) return aExact ? -1 : 1;
+            const aStarts = a.bin?.startsWith(digitQuery) || a.name?.toLowerCase().startsWith(query);
+            const bStarts = b.bin?.startsWith(digitQuery) || b.name?.toLowerCase().startsWith(query);
+            if (aStarts !== bStarts) return aStarts ? -1 : 1;
+            return b.height - a.height;
+        });
+
+        render(matches.slice(0, 8), query, matches.length);
+    }
+
+    input.addEventListener('input', updateResults);
+    input.addEventListener('keydown', (event) => {
+        if (event.key !== 'Enter') return;
+        const firstResult = activeResults[0];
+        if (!firstResult) return;
+        event.preventDefault();
+        onSelect(firstResult);
+    });
+
+    return {
+        setSelected(item) {
+            input.value = item.bin || item.name || '';
+            status.textContent = item.name ? `${item.name}${item.bin ? ` · BIN ${item.bin}` : ''}` : `BIN ${item.bin}`;
+            results.innerHTML = '';
+            activeResults = [];
         }
     };
 }

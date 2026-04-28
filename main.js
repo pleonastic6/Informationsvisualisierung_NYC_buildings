@@ -10,8 +10,10 @@ import { createScene } from './js/scene.js';
 import { buildStreets } from './js/streets.js';
 import {
     bindHeightFilter,
+    createMapLabelController,
     createModeController,
     createRankingLabelController,
+    createSearchController,
     createViewController,
     finishLoading,
     getMinHeightFilter,
@@ -43,12 +45,91 @@ const state = {
     allStats: null,
     rankingStats: null,
     hoveredMapMeta: null,
-    hoveredRankingItem: null
+    hoveredRankingItem: null,
+    pinnedMapMeta: null,
+    landmarkItems: [],
+    searchEntries: []
 };
 
 const { scene, camera, renderer } = createScene();
 const controls = createControls(camera);
 const rankingLabels = createRankingLabelController({ camera, getState: () => state });
+const mapLabels = createMapLabelController({ camera, getState: () => ({ ...state, minHeight: getMinHeightFilter() }) });
+
+function clearMapMetaHighlight(meta) {
+    if (!meta || !state.mesh) return;
+    setMapHighlight({
+        mesh: state.mesh,
+        meta,
+        sourceColors: state.palettes[state.currentMode],
+        minHeight: getMinHeightFilter(),
+        active: false
+    });
+}
+
+function setMapMetaHighlight(meta, active = true) {
+    if (!meta || !state.mesh) return;
+    setMapHighlight({
+        mesh: state.mesh,
+        meta,
+        sourceColors: state.palettes[state.currentMode],
+        minHeight: getMinHeightFilter(),
+        active
+    });
+}
+
+function isLandmarkName(name = '') {
+    const needle = name.toLowerCase();
+    return [
+        'empire state',
+        'trump',
+        'chrysler',
+        'world trade',
+        'woolworth',
+        'rockefeller',
+        'flatiron',
+        'trinity church',
+        'grand central',
+        'new york stock exchange',
+        'custom house',
+        'plaza',
+        'times square'
+    ].some((part) => needle.includes(part));
+}
+
+function createSearchEntries() {
+    return state.buildingMeta
+        .map((meta) => ({
+            ...meta,
+            bin: meta.bin ?? '',
+            name: meta.name ?? ''
+        }))
+        .filter((meta) => meta.bin || meta.name)
+        .sort((a, b) => b.height - a.height);
+}
+
+function createLandmarkItems() {
+    return state.buildingMeta
+        .filter((meta) => meta.name && (meta.height >= 150 || isLandmarkName(meta.name)))
+        .sort((a, b) => b.height - a.height)
+        .slice(0, 28);
+}
+
+function focusBuilding(meta) {
+    if (!meta) return;
+    if (state.pinnedMapMeta && state.pinnedMapMeta !== meta && state.pinnedMapMeta !== state.hoveredMapMeta) {
+        clearMapMetaHighlight(state.pinnedMapMeta);
+    }
+
+    state.pinnedMapMeta = meta;
+    state.viewMode = 'map';
+    clearHighlights();
+    hideTooltip();
+    controls.transitionToView('map');
+    controls.focusOnBuilding(meta.building);
+    viewController.applyViewMode('map');
+    setMapMetaHighlight(meta, true);
+}
 
 function updateVisibleStats() {
     const stats = state.viewMode === 'ranking' ? state.rankingStats : state.allStats;
@@ -57,14 +138,8 @@ function updateVisibleStats() {
 }
 
 function clearHighlights() {
-    if (state.hoveredMapMeta && state.mesh) {
-        setMapHighlight({
-            mesh: state.mesh,
-            meta: state.hoveredMapMeta,
-            sourceColors: state.palettes[state.currentMode],
-            minHeight: getMinHeightFilter(),
-            active: false
-        });
+    if (state.hoveredMapMeta && state.hoveredMapMeta !== state.pinnedMapMeta) {
+        clearMapMetaHighlight(state.hoveredMapMeta);
         state.hoveredMapMeta = null;
     }
 
@@ -81,35 +156,17 @@ function handleHover(meta, pointer, context) {
             state.hoveredRankingItem = null;
         }
 
-        if (state.hoveredMapMeta && state.hoveredMapMeta !== meta) {
-            setMapHighlight({
-                mesh: state.mesh,
-                meta: state.hoveredMapMeta,
-                sourceColors: state.palettes[state.currentMode],
-                minHeight: getMinHeightFilter(),
-                active: false
-            });
+        if (state.hoveredMapMeta && state.hoveredMapMeta !== meta && state.hoveredMapMeta !== state.pinnedMapMeta) {
+            clearMapMetaHighlight(state.hoveredMapMeta);
         }
 
         state.hoveredMapMeta = meta;
-        setMapHighlight({
-            mesh: state.mesh,
-            meta,
-            sourceColors: state.palettes[state.currentMode],
-            minHeight: getMinHeightFilter(),
-            active: true
-        });
+        setMapMetaHighlight(meta, true);
     }
 
     if (context?.type === 'ranking') {
-        if (state.hoveredMapMeta && state.mesh) {
-            setMapHighlight({
-                mesh: state.mesh,
-                meta: state.hoveredMapMeta,
-                sourceColors: state.palettes[state.currentMode],
-                minHeight: getMinHeightFilter(),
-                active: false
-            });
+        if (state.hoveredMapMeta && state.hoveredMapMeta !== state.pinnedMapMeta) {
+            clearMapMetaHighlight(state.hoveredMapMeta);
             state.hoveredMapMeta = null;
         }
 
@@ -161,6 +218,7 @@ const modeController = createModeController({
     setMode: (mode) => {
         state.currentMode = mode;
         modeController.applyMode(mode);
+        if (state.pinnedMapMeta) setMapMetaHighlight(state.pinnedMapMeta, true);
         clearHighlights();
         hideTooltip();
     }
@@ -178,6 +236,14 @@ const viewController = createViewController({
     updateVisibleStats
 });
 
+const searchController = createSearchController({
+    getSearchState: () => ({ searchEntries: state.searchEntries }),
+    onSelect: (item) => {
+        focusBuilding(item);
+        searchController.setSelected(item);
+    }
+});
+
 bindHeightFilter(() => ({
     mesh: state.mesh,
     buildingMeta: state.buildingMeta,
@@ -186,6 +252,7 @@ bindHeightFilter(() => ({
     currentMode: state.currentMode
 }), () => {
     clearHighlights();
+    if (state.pinnedMapMeta) setMapMetaHighlight(state.pinnedMapMeta, true);
     hideTooltip();
     updateVisibleStats();
 });
@@ -211,6 +278,7 @@ function animate() {
     controls.updateCamera();
     updateViewTransition();
     rankingLabels.update();
+    mapLabels.update();
     renderer.render(scene, camera);
 }
 
@@ -219,9 +287,16 @@ async function init() {
     animate();
 
     setProgress(15, 'Gebäudedaten laden…');
-    const buildingResponse = await fetch('buildings.json');
-    const buildingData = await buildingResponse.json();
+    const [buildingResponse, metadataResponse] = await Promise.all([
+        fetch('buildings.json'),
+        fetch('building-metadata.json').catch(() => null)
+    ]);
+    const [buildingData, metadataData] = await Promise.all([
+        buildingResponse.json(),
+        metadataResponse?.ok ? metadataResponse.json() : Promise.resolve(null)
+    ]);
     const buildings = buildingData.buildings;
+    const metadata = metadataData?.buildings ?? [];
 
     const heights = buildings.map((building) => building.h);
     const grounds = buildings.map((building) => building.g);
@@ -255,6 +330,12 @@ async function init() {
     state.buildingMeta = buildingResult.buildingMeta;
     state.palettes = buildingResult.palettes;
 
+    state.buildingMeta.forEach((meta, index) => {
+        const [bin = '', name = ''] = metadata[index] ?? [];
+        meta.bin = bin;
+        meta.name = name;
+    });
+
     setProgress(90, 'Top-100 Ranking bauen…');
     const rankingResult = buildRankingView({
         scene,
@@ -266,7 +347,16 @@ async function init() {
 
     state.rankingGroup = rankingResult.group;
     state.rankingItems = rankingResult.items;
+    state.rankingItems.forEach((item) => {
+        const sourceMeta = state.buildingMeta[item.meta.sourceIndex];
+        if (!sourceMeta) return;
+        item.meta.bin = sourceMeta.bin;
+        item.meta.name = sourceMeta.name;
+    });
     rankingLabels.setItems(state.rankingItems);
+    state.searchEntries = createSearchEntries();
+    state.landmarkItems = createLandmarkItems();
+    mapLabels.setItems(state.landmarkItems);
     state.rankingStats = {
         count: rankingResult.items.length,
         maxHeight: rankingResult.items[0]?.meta.height ?? 0,
