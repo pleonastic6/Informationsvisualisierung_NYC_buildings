@@ -9,6 +9,12 @@ const MAP_VIEW = {
     pitch: 0.104
 };
 
+const SEARCH_FOCUS_DIRECTION = new THREE.Vector3(
+    Math.sin(MAP_VIEW.yaw),
+    0,
+    Math.cos(MAP_VIEW.yaw)
+).normalize();
+
 const RANKING_VIEW = {
     pos: new THREE.Vector3(0, 125, 245),
     target: new THREE.Vector3(0, 16, 0)
@@ -174,12 +180,7 @@ export function createControls(camera) {
             const distance = Math.max(50, Math.min(220, meta.footprintRadius * 2.8 + meta.height * 0.18 + 30));
             const target = new THREE.Vector3(meta.centerX, baseHeight + targetHeight, meta.centerZ);
 
-            const currentDir = getDirection();
-            const horizontalDir = new THREE.Vector3(currentDir.x, 0, currentDir.z);
-            if (horizontalDir.lengthSq() < 1e-6) horizontalDir.set(0, 0, 1);
-            horizontalDir.normalize();
-
-            const pos = target.clone().addScaledVector(horizontalDir, -distance);
+            const pos = target.clone().addScaledVector(SEARCH_FOCUS_DIRECTION, -distance);
             pos.y = baseHeight + cameraHeight;
             const angles = anglesFromLookAt(pos, target);
 

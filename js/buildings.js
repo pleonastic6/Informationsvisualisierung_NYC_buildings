@@ -72,6 +72,11 @@ function describeBuilding(building, rank = null, sourceIndex = null) {
     let maxX = -Infinity;
     let minZ = Infinity;
     let maxZ = -Infinity;
+    let areaAccumulator = 0;
+    let centroidXAccumulator = 0;
+    let centroidZAccumulator = 0;
+
+    const pointCount = building.ext.length / 2;
 
     for (let i = 0; i < building.ext.length; i += 2) {
         const x = building.ext[i];
@@ -80,10 +85,25 @@ function describeBuilding(building, rank = null, sourceIndex = null) {
         if (x > maxX) maxX = x;
         if (z < minZ) minZ = z;
         if (z > maxZ) maxZ = z;
+
+        const nextIndex = (i + 2) % building.ext.length;
+        const nextX = building.ext[nextIndex];
+        const nextZ = building.ext[nextIndex + 1];
+        const cross = x * nextZ - nextX * z;
+        areaAccumulator += cross;
+        centroidXAccumulator += (x + nextX) * cross;
+        centroidZAccumulator += (z + nextZ) * cross;
     }
 
     const footprintWidth = maxX - minX;
     const footprintDepth = maxZ - minZ;
+    const polygonArea = areaAccumulator * 0.5;
+    const centroidX = Math.abs(polygonArea) > 1e-6
+        ? centroidXAccumulator / (6 * polygonArea)
+        : building.x;
+    const centroidZ = Math.abs(polygonArea) > 1e-6
+        ? centroidZAccumulator / (6 * polygonArea)
+        : building.z;
 
     return {
         building,
@@ -92,8 +112,8 @@ function describeBuilding(building, rank = null, sourceIndex = null) {
         height: building.h,
         era: building.era,
         eraLabel: ERA_LABELS[building.era] ?? ERA_LABELS[0],
-        centerX: (minX + maxX) * 0.5,
-        centerZ: (minZ + maxZ) * 0.5,
+        centerX: centroidX,
+        centerZ: centroidZ,
         footprintWidth,
         footprintDepth,
         footprintRadius: Math.max(8, Math.hypot(footprintWidth, footprintDepth) * 0.5)
