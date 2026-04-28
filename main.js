@@ -257,16 +257,9 @@ async function init() {
     animate();
 
     setProgress(15, 'Gebäudedaten laden…');
-    const [buildingResponse, metadataResponse] = await Promise.all([
-        fetch('buildings.json'),
-        fetch('building-metadata.json').catch(() => null)
-    ]);
-    const [buildingData, metadataData] = await Promise.all([
-        buildingResponse.json(),
-        metadataResponse?.ok ? metadataResponse.json() : Promise.resolve(null)
-    ]);
+    const buildingResponse = await fetch('buildings.json');
+    const buildingData = await buildingResponse.json();
     const buildings = buildingData.buildings;
-    const metadata = metadataData?.buildings ?? [];
 
     const heights = buildings.map((building) => building.h);
     const grounds = buildings.map((building) => building.g);
@@ -300,12 +293,6 @@ async function init() {
     state.buildingMeta = buildingResult.buildingMeta;
     state.palettes = buildingResult.palettes;
 
-    state.buildingMeta.forEach((meta, index) => {
-        const [bin = '', name = ''] = metadata[index] ?? [];
-        meta.bin = bin;
-        meta.name = name;
-    });
-
     setProgress(90, 'Top-100 Ranking bauen…');
     const rankingResult = buildRankingView({
         scene,
@@ -317,12 +304,6 @@ async function init() {
 
     state.rankingGroup = rankingResult.group;
     state.rankingItems = rankingResult.items;
-    state.rankingItems.forEach((item) => {
-        const sourceMeta = state.buildingMeta[item.meta.sourceIndex];
-        if (!sourceMeta) return;
-        item.meta.bin = sourceMeta.bin;
-        item.meta.name = sourceMeta.name;
-    });
     rankingLabels.setItems(state.rankingItems);
     state.searchEntries = createSearchEntries();
     state.rankingStats = {

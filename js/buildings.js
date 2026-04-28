@@ -109,6 +109,8 @@ function describeBuilding(building, rank = null, sourceIndex = null) {
         building,
         rank,
         sourceIndex,
+        bin: building.bin ?? '',
+        name: building.name ?? '',
         height: building.h,
         era: building.era,
         eraLabel: ERA_LABELS[building.era] ?? ERA_LABELS[0],
