@@ -1,3 +1,5 @@
+const THREE = window.THREE;
+
 import {
     buildBuildings,
     buildRankingView,
@@ -10,6 +12,7 @@ import { createScene } from './js/scene.js';
 import { buildStreets } from './js/streets.js';
 import {
     bindHeightFilter,
+    createFocusDebugController,
     createModeController,
     createRankingLabelController,
     createSearchController,
@@ -52,6 +55,26 @@ const state = {
 const { scene, camera, renderer } = createScene();
 const controls = createControls(camera);
 const rankingLabels = createRankingLabelController({ camera, getState: () => state });
+const focusDebug = createFocusDebugController();
+
+const debugTargetMarker = new THREE.Group();
+debugTargetMarker.visible = false;
+
+const debugTargetStem = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.7, 0.7, 24, 12),
+    new THREE.MeshBasicMaterial({ color: 0x39ff88 })
+);
+debugTargetStem.position.y = 12;
+debugTargetMarker.add(debugTargetStem);
+
+const debugTargetHead = new THREE.Mesh(
+    new THREE.SphereGeometry(3.4, 20, 20),
+    new THREE.MeshBasicMaterial({ color: 0xfff06a })
+);
+debugTargetHead.position.y = 25;
+debugTargetMarker.add(debugTargetHead);
+
+scene.add(debugTargetMarker);
 
 function clearMapMetaHighlight(meta) {
     if (!meta || !state.mesh) return;
@@ -96,6 +119,9 @@ function focusBuilding(meta) {
     state.viewMode = 'map';
     clearHighlights();
     hideTooltip();
+    debugTargetMarker.visible = true;
+    debugTargetMarker.position.set(meta.centerX, meta.building.g * 0.02, meta.centerZ);
+    focusDebug.setTarget(meta);
     controls.transitionToView('map');
     controls.focusOnBuilding(meta);
     viewController.applyViewMode('map');

@@ -281,3 +281,25 @@ export function createSearchController({ getSearchState, onSelect }) {
         }
     };
 }
+
+export function createFocusDebugController() {
+    const panel = document.createElement('div');
+    panel.id = 'focus-debug';
+    panel.innerHTML = '<div class="focus-debug-title">Search Debug</div><div id="focus-debug-body">Noch kein Ziel gewählt.</div>';
+    document.body.appendChild(panel);
+
+    const body = panel.querySelector('#focus-debug-body');
+
+    return {
+        setTarget(meta) {
+            body.innerHTML = `
+                <div class="focus-debug-row">Name <span>${meta.name || '—'}</span></div>
+                <div class="focus-debug-row">BIN <span>${meta.bin || '—'}</span></div>
+                <div class="focus-debug-row">meta.center <span>${meta.centerX.toFixed(2)}, ${meta.centerZ.toFixed(2)}</span></div>
+                <div class="focus-debug-row">building.xz <span>${meta.building.x.toFixed(2)}, ${meta.building.z.toFixed(2)}</span></div>
+                <div class="focus-debug-row">footprint r <span>${meta.footprintRadius.toFixed(2)}</span></div>
+                <div class="focus-debug-row">height <span>${meta.height.toFixed(2)} m</span></div>
+            `;
+        }
+    };
+}

@@ -478,6 +478,43 @@ input[type=range]::-webkit-slider-thumb {
     backdrop-filter: blur(14px);
 }
 
+#focus-debug {
+    position: fixed;
+    left: 32px;
+    bottom: 24px;
+    z-index: 14;
+    width: 320px;
+    padding: 12px 14px;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 16px;
+    background: rgba(8, 9, 14, 0.78);
+    backdrop-filter: blur(12px);
+    box-shadow: var(--shadow);
+}
+
+.focus-debug-title {
+    font-size: 9px;
+    letter-spacing: .18em;
+    color: var(--text);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+}
+
+.focus-debug-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    font-size: 8px;
+    line-height: 1.8;
+    letter-spacing: .12em;
+    color: var(--muted);
+}
+
+.focus-debug-row span {
+    color: var(--text);
+    text-align: right;
+}
+
 #ranking-labels {
     position: fixed;
     inset: 0;
