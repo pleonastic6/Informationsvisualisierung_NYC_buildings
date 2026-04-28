@@ -34,7 +34,9 @@ const state = {
     buildingMeta: [],
     rankingGroup: null,
     rankingItems: [],
+    rankingBuildPromise: null,
     streetGroup: null,
+    sourceBuildings: [],
     palettes: {
         height: [],
         era: [],
@@ -183,9 +185,49 @@ function focusBuilding(meta) {
 }
 
 function updateVisibleStats() {
-    const stats = state.viewMode === 'ranking' ? state.rankingStats : state.allStats;
+    const stats = state.viewMode === 'ranking'
+        ? (state.rankingStats ?? state.allStats)
+        : state.allStats;
     if (!stats) return;
     updateStats(stats);
+}
+
+async function ensureRankingView() {
+    if (state.rankingGroup) return;
+    if (state.rankingBuildPromise) return state.rankingBuildPromise;
+
+    state.rankingBuildPromise = Promise.resolve().then(() => {
+        const rankingResult = buildRankingView({
+            scene,
+            buildings: state.sourceBuildings,
+            maxHeight: state.maxHeight,
+            minGround: state.minGround,
+            maxGround: state.maxGround
+        });
+
+        state.rankingGroup = rankingResult.group;
+        state.rankingItems = rankingResult.items;
+        state.rankingItems.forEach((item) => {
+            const sourceMeta = state.buildingMeta[item.meta.sourceIndex];
+            if (!sourceMeta) return;
+            item.meta.bin = sourceMeta.bin;
+            item.meta.name = sourceMeta.name;
+        });
+        rankingLabels.setItems(state.rankingItems);
+        state.rankingStats = {
+            count: rankingResult.items.length,
+            maxHeight: rankingResult.items[0]?.meta.height ?? 0,
+            averageHeight: rankingResult.items.reduce((sum, item) => sum + item.meta.height, 0) / Math.max(1, rankingResult.items.length),
+            streetCount: 0
+        };
+
+        modeController.applyMode(state.currentMode);
+        updateVisibleStats();
+    }).finally(() => {
+        state.rankingBuildPromise = null;
+    });
+
+    return state.rankingBuildPromise;
 }
 
 function clearHighlights() {
@@ -281,7 +323,8 @@ const modeController = createModeController({
 
 const viewController = createViewController({
     getState: () => state,
-    setViewMode: (viewMode) => {
+    setViewMode: async (viewMode) => {
+        if (viewMode === 'ranking') await ensureRankingView();
         state.viewMode = viewMode;
         clearHighlights();
         hideTooltip();
@@ -352,6 +395,7 @@ async function init() {
     ]);
     const buildings = buildingData.buildings;
     const metadata = metadataData?.buildings ?? [];
+    state.sourceBuildings = buildings;
 
     const heights = buildings.map((building) => building.h);
     const grounds = buildings.map((building) => building.g);
@@ -391,36 +435,12 @@ async function init() {
         meta.name = name;
     });
 
-    setProgress(90, 'Top-100 Ranking bauen…');
-    const rankingResult = buildRankingView({
-        scene,
-        buildings,
-        maxHeight: state.maxHeight,
-        minGround: state.minGround,
-        maxGround: state.maxGround
-    });
-
-    state.rankingGroup = rankingResult.group;
-    state.rankingItems = rankingResult.items;
-    state.rankingItems.forEach((item) => {
-        const sourceMeta = state.buildingMeta[item.meta.sourceIndex];
-        if (!sourceMeta) return;
-        item.meta.bin = sourceMeta.bin;
-        item.meta.name = sourceMeta.name;
-    });
-    rankingLabels.setItems(state.rankingItems);
     state.searchEntries = createSearchEntries();
-    state.rankingStats = {
-        count: rankingResult.items.length,
-        maxHeight: rankingResult.items[0]?.meta.height ?? 0,
-        averageHeight: rankingResult.items.reduce((sum, item) => sum + item.meta.height, 0) / rankingResult.items.length,
-        streetCount: 0
-    };
 
     modeController.applyMode(state.currentMode);
     viewController.applyViewMode(state.viewMode);
 
-    setProgress(94, 'Straßen laden…');
+    setProgress(90, 'Straßen laden…');
     try {
         const streetResponse = await fetch('streets.json');
         if (streetResponse.ok) {
