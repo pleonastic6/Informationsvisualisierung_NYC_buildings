@@ -1,12 +1,12 @@
 const THREE = window.THREE;
 
 export const ERA_COLORS = [
-    new THREE.Color(0x3a2c3f),
-    new THREE.Color(0x7a405d),
-    new THREE.Color(0xb64e7d),
-    new THREE.Color(0xd85c98),
-    new THREE.Color(0xf06ab4),
-    new THREE.Color(0xff8fd1)
+    new THREE.Color(0x4b5563),
+    new THREE.Color(0x7c4a03),
+    new THREE.Color(0xc2410c),
+    new THREE.Color(0xca8a04),
+    new THREE.Color(0x0ea5a4),
+    new THREE.Color(0x2563eb)
 ];
 
 export const ERA_LABELS = [
