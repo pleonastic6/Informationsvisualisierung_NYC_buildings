@@ -47,6 +47,10 @@ export function createScene() {
     document.body.appendChild(renderer.domElement);
 
     const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.5, 6000);
+    const xrOrigin = new THREE.Group();
+    xrOrigin.name = 'xr-origin';
+    xrOrigin.add(camera);
+    scene.add(xrOrigin);
 
     scene.add(new THREE.AmbientLight(0xf5f7ff, 0.7));
 
@@ -81,5 +85,5 @@ export function createScene() {
         renderer.setSize(window.innerWidth, window.innerHeight);
     });
 
-    return { scene, camera, renderer, ground, groundGrid };
+    return { scene, camera, renderer, ground, groundGrid, xrOrigin };
 }

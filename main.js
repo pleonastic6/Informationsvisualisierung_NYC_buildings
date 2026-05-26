@@ -5,9 +5,10 @@ import {
     setRankingHighlight
 } from './js/buildings.js';
 import { createControls } from './js/controls.js';
-import { createHoverController } from './js/interaction.js';
+import { createSelectionController } from './js/interaction.js';
 import { createScene } from './js/scene.js';
 import { buildStreets } from './js/streets.js';
+import { createWebXR } from './js/webxr.js';
 import {
     bindHeightFilter,
     createModeController,
@@ -48,10 +49,13 @@ const state = {
     pinnedMapMeta: null,
     searchEntries: []
 };
+let transitionDirty = true;
 
-const { scene, camera, renderer } = createScene();
+const { scene, camera, renderer, xrOrigin } = createScene();
 const controls = createControls(camera);
+const webXR = createWebXR({ scene, camera, renderer, xrOrigin });
 const rankingLabels = createRankingLabelController({ camera, getState: () => state });
+const clock = new THREE.Clock();
 
 function getFocusTarget(meta) {
     return { x: meta.centerX, z: -meta.centerZ };
@@ -139,7 +143,7 @@ function clearHighlights() {
     }
 }
 
-function handleHover(meta, pointer, context) {
+function handleSelect(meta, pointer, context) {
     if (context?.type === 'map') {
         if (state.hoveredRankingItem) {
             setRankingHighlight(state.hoveredRankingItem, false);
@@ -173,8 +177,11 @@ function handleHover(meta, pointer, context) {
 
 function updateViewTransition() {
     const target = state.viewMode === 'ranking' ? 1 : 0;
+    const previousProgress = state.transitionProgress;
     state.transitionProgress += (target - state.transitionProgress) * 0.08;
     if (Math.abs(target - state.transitionProgress) < 0.001) state.transitionProgress = target;
+    if (!transitionDirty && previousProgress === state.transitionProgress) return;
+    transitionDirty = false;
 
     const mapAlpha = 1 - state.transitionProgress;
     const rankingAlpha = state.transitionProgress;
@@ -218,6 +225,7 @@ const viewController = createViewController({
     getState: () => state,
     setViewMode: (viewMode) => {
         state.viewMode = viewMode;
+        transitionDirty = true;
         clearHighlights();
         hideTooltip();
         controls.transitionToView(viewMode);
@@ -247,8 +255,9 @@ bindHeightFilter(() => ({
     updateVisibleStats();
 });
 
-createHoverController({
+createSelectionController({
     camera,
+    xrControllers: webXR.controllers,
     getInteractiveState: () => ({
         viewMode: state.viewMode,
         mapMesh: state.mesh,
@@ -256,25 +265,26 @@ createHoverController({
         rankingItems: state.rankingItems,
         minHeight: getMinHeightFilter()
     }),
-    onHover: handleHover,
-    onLeave: () => {
+    onSelect: handleSelect,
+    onClear: () => {
         clearHighlights();
         hideTooltip();
     }
 });
 
 function animate() {
-    requestAnimationFrame(animate);
-    controls.updateCamera();
+    const deltaSeconds = clock.getDelta();
+    if (webXR.isPresenting()) webXR.update(deltaSeconds);
+    else controls.updateCamera();
     updateViewTransition();
-    updatePinnedPulse();
-    rankingLabels.update();
+    if (!webXR.isPresenting()) updatePinnedPulse();
+    if (!webXR.isPresenting()) rankingLabels.update();
     renderer.render(scene, camera);
 }
 
 async function init() {
     setProgress(5, 'Three.js initialisieren…');
-    animate();
+    renderer.setAnimationLoop(animate);
 
     setProgress(15, 'Gebäudedaten laden…');
     const [buildingResponse, metadataResponse] = await Promise.all([
@@ -377,6 +387,7 @@ async function init() {
     modeController.applyMode(state.currentMode);
     viewController.applyViewMode(state.viewMode);
     controls.transitionToView('map');
+    transitionDirty = true;
     updateViewTransition();
     finishLoading();
 }

@@ -129,7 +129,8 @@ canvas {
 #filter-panel,
 #controls,
 #hover-tooltip,
-#ranking-labels {
+#ranking-labels,
+#xr-panel {
     position: relative;
     z-index: 5;
 }
@@ -476,6 +477,77 @@ input[type=range]::-webkit-slider-thumb {
     transition: opacity .12s ease;
     box-shadow: var(--shadow);
     backdrop-filter: blur(14px);
+}
+
+#xr-panel {
+    position: fixed;
+    top: 132px;
+    right: 24px;
+    z-index: 12;
+    display: grid;
+    gap: 8px;
+    width: 180px;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+    backdrop-filter: blur(12px);
+    box-shadow: var(--shadow);
+}
+
+#xr-enter {
+    width: 100%;
+    border: 1px solid rgba(255, 76, 166, 0.62);
+    border-radius: 6px;
+    background: var(--accent-soft);
+    color: var(--text);
+    cursor: pointer;
+    font-family: "NType82", monospace;
+    font-size: 9px;
+    letter-spacing: .2em;
+    padding: 9px 10px;
+    text-transform: uppercase;
+}
+
+#xr-enter:hover:not(:disabled) {
+    border-color: var(--accent);
+    background: rgba(255, 76, 166, 0.28);
+}
+
+#xr-enter:disabled {
+    cursor: not-allowed;
+    opacity: .48;
+}
+
+#xr-status {
+    color: var(--muted);
+    font-size: 8px;
+    letter-spacing: .12em;
+    line-height: 1.5;
+    min-height: 12px;
+}
+
+@media (max-width: 760px) {
+    #xr-panel {
+        top: auto;
+        right: 16px;
+        bottom: 86px;
+        left: 16px;
+        width: auto;
+    }
+}
+
+body.xr-presenting #hud-tl,
+body.xr-presenting #hud-tr,
+body.xr-presenting #search-panel,
+body.xr-presenting #mode-bar,
+body.xr-presenting #view-bar,
+body.xr-presenting #legend,
+body.xr-presenting #filter-panel,
+body.xr-presenting #controls,
+body.xr-presenting #hover-tooltip,
+body.xr-presenting #ranking-labels {
+    display: none;
 }
 
 #ranking-labels {
