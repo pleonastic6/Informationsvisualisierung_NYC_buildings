@@ -3,9 +3,7 @@ const THREE = window.THREE;
 const MOVE_SPEED = 72;
 const VERTICAL_SPEED = 42;
 const DEAD_ZONE = 0.16;
-const SNAP_DEAD_ZONE = 0.72;
-const SNAP_RESET_ZONE = 0.35;
-const SNAP_TURN = Math.PI / 10;
+const TURN_SPEED = 1.8;
 const HEIGHT_OFFSET = 1.6;
 const XR_SETTLE_SECONDS = 0.25;
 const XR_FRAMEBUFFER_SCALE = 0.72;
@@ -90,8 +88,10 @@ export function createWebXR({ scene, camera, renderer, xrOrigin }) {
 
     let supported = false;
     let session = null;
-    let snapTurnReady = true;
     let settleTime = 0;
+    let onMenuToggle = null;
+    let onLegendToggle = null;
+    const previousButtons = new Map();
     const desktopCameraState = {
         position: new THREE.Vector3(),
         quaternion: new THREE.Quaternion()
@@ -115,7 +115,8 @@ export function createWebXR({ scene, camera, renderer, xrOrigin }) {
         const desktopYaw = Math.atan2(desktopForward.x, desktopForward.z);
 
         const xrSession = await navigator.xr.requestSession('immersive-vr', {
-            optionalFeatures: ['local-floor', 'bounded-floor', 'hand-tracking']
+            optionalFeatures: ['local-floor', 'bounded-floor', 'hand-tracking', 'dom-overlay'],
+            domOverlay: { root: document.body }
         });
         xrSession.addEventListener('end', () => {
             xrOrigin.position.set(0, 0, 0);
@@ -129,7 +130,6 @@ export function createWebXR({ scene, camera, renderer, xrOrigin }) {
         xrOrigin.rotation.set(0, desktopYaw, 0);
         camera.position.set(0, 0, 0);
         camera.quaternion.identity();
-        snapTurnReady = true;
         settleTime = XR_SETTLE_SECONDS;
         setSessionState(xrSession);
     }
@@ -189,16 +189,21 @@ export function createWebXR({ scene, camera, renderer, xrOrigin }) {
             const { x, y } = stickAxes(gamepad);
             const isRight = source.handedness === 'right' || (!source.handedness && index === 1);
             const isLeft = source.handedness === 'left' || (!source.handedness && index === 0);
+            const buttonStateKey = source.handedness || `controller-${index}`;
+            const previous = previousButtons.get(buttonStateKey) ?? [];
+
+            if (isLeft && pressed(gamepad, 5) && !previous[5]) {
+                onMenuToggle?.();
+            }
+            if (isLeft && pressed(gamepad, 4) && !previous[4]) {
+                onLegendToggle?.();
+            }
+
+            previousButtons.set(buttonStateKey, gamepad.buttons?.map((button) => Boolean(button.pressed)) ?? []);
 
             if (isRight) {
-                if (Math.abs(x) < SNAP_RESET_ZONE) snapTurnReady = true;
-                if (snapTurnReady && Math.abs(x) > SNAP_DEAD_ZONE) {
-                    xrOrigin.rotation.y -= Math.sign(x) * SNAP_TURN;
-                    snapTurnReady = false;
-                }
+                if (x) xrOrigin.rotation.y -= x * TURN_SPEED * deltaSeconds;
                 if (y) move.y += -y * VERTICAL_SPEED * deltaSeconds;
-                if (pressed(gamepad, 4)) move.y += VERTICAL_SPEED * deltaSeconds;
-                if (pressed(gamepad, 5)) move.y -= VERTICAL_SPEED * deltaSeconds;
                 continue;
             }
 
@@ -206,8 +211,6 @@ export function createWebXR({ scene, camera, renderer, xrOrigin }) {
                 const boost = pressed(gamepad, 1) ? 2.1 : 1;
                 move.addScaledVector(right, x * MOVE_SPEED * boost * deltaSeconds);
                 move.addScaledVector(forward, -y * MOVE_SPEED * boost * deltaSeconds);
-                if (pressed(gamepad, 4)) move.y -= VERTICAL_SPEED * deltaSeconds;
-                if (pressed(gamepad, 5)) move.y += VERTICAL_SPEED * deltaSeconds;
             }
         }
 
@@ -224,6 +227,12 @@ export function createWebXR({ scene, camera, renderer, xrOrigin }) {
     return {
         isPresenting: () => Boolean(session),
         update,
+        setMenuToggleHandler(handler) {
+            onMenuToggle = handler;
+        },
+        setLegendToggleHandler(handler) {
+            onLegendToggle = handler;
+        },
         controllers,
         scene
     };

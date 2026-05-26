@@ -32,6 +32,16 @@ export function getMinHeightFilter() {
     return Number.parseFloat(document.getElementById('height-filter').value);
 }
 
+export function setMinHeightFilter(value) {
+    const slider = document.getElementById('height-filter');
+    const nextValue = Math.max(
+        Number.parseFloat(slider.min),
+        Math.min(Number.parseFloat(slider.max), value)
+    );
+    slider.value = `${Math.round(nextValue)}`;
+    slider.dispatchEvent(new Event('input', { bubbles: true }));
+}
+
 export function setLegendForHeight(maxHeight) {
     drawLegendBar(heightColor);
     document.getElementById('leg-max').textContent = `${Math.round(maxHeight)} m`;

@@ -9,6 +9,7 @@ import { createSelectionController } from './js/interaction.js';
 import { createScene } from './js/scene.js';
 import { buildStreets } from './js/streets.js';
 import { createWebXR } from './js/webxr.js';
+import { createXRUi } from './js/xr-ui.js';
 import {
     bindHeightFilter,
     createModeController,
@@ -19,6 +20,7 @@ import {
     getMinHeightFilter,
     hideTooltip,
     setLegendForHeight,
+    setMinHeightFilter,
     setProgress,
     setSliderMax,
     showTooltip,
@@ -56,6 +58,20 @@ const controls = createControls(camera);
 const webXR = createWebXR({ scene, camera, renderer, xrOrigin });
 const rankingLabels = createRankingLabelController({ camera, getState: () => state });
 const clock = new THREE.Clock();
+const XR_SEARCH_FOCUS_DIRECTION = new THREE.Vector3(
+    Math.sin(-3.341),
+    0,
+    Math.cos(-3.341)
+).normalize();
+const XR_FOCUS_DURATION = 1.25;
+const xrFocusTransition = {
+    active: false,
+    progress: 1,
+    fromPosition: new THREE.Vector3(),
+    toPosition: new THREE.Vector3(),
+    fromYaw: 0,
+    toYaw: 0
+};
 
 function getFocusTarget(meta) {
     return { x: meta.centerX, z: -meta.centerZ };
@@ -120,9 +136,49 @@ function focusBuilding(meta) {
     clearHighlights();
     hideTooltip();
     controls.transitionToView('map');
+    transitionDirty = true;
     controls.focusOnBuilding(meta, target);
     viewController.applyViewMode('map');
     setMapMetaHighlight(meta, true);
+}
+
+function focusXRBuilding(meta) {
+    if (!webXR.isPresenting() || !meta) return;
+
+    const baseHeight = meta.building.g * 0.02;
+    const targetHeight = Math.max(10, Math.min(38, meta.height * 0.1));
+    const cameraHeight = Math.max(30, Math.min(120, meta.height * 0.28 + 24));
+    const distance = Math.max(50, Math.min(220, meta.footprintRadius * 2.8 + meta.height * 0.18 + 30));
+    const target = new THREE.Vector3(meta.centerX, baseHeight + targetHeight, -meta.centerZ);
+    const pos = target.clone().addScaledVector(XR_SEARCH_FOCUS_DIRECTION, -distance);
+    pos.y = baseHeight + cameraHeight;
+
+    const dir = target.clone().sub(pos).normalize();
+    xrFocusTransition.active = true;
+    xrFocusTransition.progress = 0;
+    xrFocusTransition.fromPosition.copy(xrOrigin.position);
+    xrFocusTransition.toPosition.set(pos.x, Math.max(0, pos.y - 1.6), pos.z);
+    xrFocusTransition.fromYaw = xrOrigin.rotation.y;
+    xrFocusTransition.toYaw = Math.atan2(-dir.x, -dir.z);
+}
+
+function shortestAngleDelta(from, to) {
+    return Math.atan2(Math.sin(to - from), Math.cos(to - from));
+}
+
+function easeInOutCubic(t) {
+    return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+}
+
+function updateXRFocusTransition(deltaSeconds) {
+    if (!xrFocusTransition.active) return;
+
+    xrFocusTransition.progress = Math.min(1, xrFocusTransition.progress + deltaSeconds / XR_FOCUS_DURATION);
+    const eased = easeInOutCubic(xrFocusTransition.progress);
+    xrOrigin.position.lerpVectors(xrFocusTransition.fromPosition, xrFocusTransition.toPosition, eased);
+    xrOrigin.rotation.y = xrFocusTransition.fromYaw + shortestAngleDelta(xrFocusTransition.fromYaw, xrFocusTransition.toYaw) * eased;
+
+    if (xrFocusTransition.progress >= 1) xrFocusTransition.active = false;
 }
 
 function updateVisibleStats() {
@@ -180,7 +236,13 @@ function updateViewTransition() {
     const previousProgress = state.transitionProgress;
     state.transitionProgress += (target - state.transitionProgress) * 0.08;
     if (Math.abs(target - state.transitionProgress) < 0.001) state.transitionProgress = target;
-    if (!transitionDirty && previousProgress === state.transitionProgress) return;
+    const mapShouldBeVisible = state.transitionProgress < 0.98;
+    const rankingShouldBeVisible = state.transitionProgress > 0.02;
+    const visibilityMismatch =
+        (state.mesh && state.mesh.visible !== mapShouldBeVisible)
+        || (state.streetGroup && state.streetGroup.visible !== mapShouldBeVisible)
+        || (state.rankingGroup && state.rankingGroup.visible !== rankingShouldBeVisible);
+    if (!transitionDirty && previousProgress === state.transitionProgress && !visibilityMismatch) return;
     transitionDirty = false;
 
     const mapAlpha = 1 - state.transitionProgress;
@@ -234,6 +296,55 @@ const viewController = createViewController({
     updateVisibleStats
 });
 
+function setModeFromXR(mode) {
+    state.currentMode = mode;
+    modeController.applyMode(mode);
+    if (state.pinnedMapMeta) setMapMetaHighlight(state.pinnedMapMeta, true);
+    clearHighlights();
+    hideTooltip();
+}
+
+function setViewFromXR(viewMode) {
+    state.viewMode = viewMode;
+    transitionDirty = true;
+    clearHighlights();
+    hideTooltip();
+    controls.transitionToView(viewMode);
+    viewController.applyViewMode(viewMode);
+}
+
+function searchBuildingsFromXR(query) {
+    const normalizedQuery = query.trim().toLowerCase();
+    if (!normalizedQuery) return [];
+
+    const digitQuery = normalizedQuery.replace(/\s+/g, '');
+    const matches = [];
+
+    for (const entry of state.searchEntries) {
+        const bin = entry.bin?.toLowerCase() ?? '';
+        const name = entry.name?.toLowerCase() ?? '';
+        const byBin = bin.includes(digitQuery);
+        const byName = name.includes(normalizedQuery);
+        if (byBin || byName) matches.push(entry);
+    }
+
+    matches.sort((a, b) => {
+        const aBin = a.bin?.toLowerCase() ?? '';
+        const bBin = b.bin?.toLowerCase() ?? '';
+        const aName = a.name?.toLowerCase() ?? '';
+        const bName = b.name?.toLowerCase() ?? '';
+        const aExact = aBin === digitQuery || aName === normalizedQuery;
+        const bExact = bBin === digitQuery || bName === normalizedQuery;
+        if (aExact !== bExact) return aExact ? -1 : 1;
+        const aStarts = aBin.startsWith(digitQuery) || aName.startsWith(normalizedQuery);
+        const bStarts = bBin.startsWith(digitQuery) || bName.startsWith(normalizedQuery);
+        if (aStarts !== bStarts) return aStarts ? -1 : 1;
+        return b.height - a.height;
+    });
+
+    return matches.slice(0, 3);
+}
+
 const searchController = createSearchController({
     getSearchState: () => ({ searchEntries: state.searchEntries }),
     onSelect: (item) => {
@@ -255,6 +366,29 @@ bindHeightFilter(() => ({
     updateVisibleStats();
 });
 
+const xrUi = createXRUi({
+    xrOrigin,
+    webXR,
+    getState: () => state,
+    actions: {
+        setMode: setModeFromXR,
+        setViewMode: setViewFromXR,
+        getMinHeight: getMinHeightFilter,
+        setMinHeight: setMinHeightFilter,
+        adjustMinHeight(delta) {
+            setMinHeightFilter(getMinHeightFilter() + delta);
+        },
+        search: searchBuildingsFromXR,
+        selectSearchResult(item) {
+            focusBuilding(item);
+            focusXRBuilding(item);
+            searchController.setSelected(item);
+        }
+    }
+});
+webXR.setMenuToggleHandler(() => xrUi.toggleMenu());
+webXR.setLegendToggleHandler(() => xrUi.toggleLegend());
+
 createSelectionController({
     camera,
     xrControllers: webXR.controllers,
@@ -269,14 +403,17 @@ createSelectionController({
     onClear: () => {
         clearHighlights();
         hideTooltip();
-    }
+    },
+    onBeforeXRSelect: (controller) => xrUi.select(controller)
 });
 
 function animate() {
     const deltaSeconds = clock.getDelta();
     if (webXR.isPresenting()) webXR.update(deltaSeconds);
     else controls.updateCamera();
+    if (webXR.isPresenting()) updateXRFocusTransition(deltaSeconds);
     updateViewTransition();
+    xrUi.update();
     if (!webXR.isPresenting()) updatePinnedPulse();
     if (!webXR.isPresenting()) rankingLabels.update();
     renderer.render(scene, camera);

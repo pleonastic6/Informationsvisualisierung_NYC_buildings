@@ -213,7 +213,7 @@ function getSelection(state, raycaster, pickIndex) {
         : getMapHit(state, raycaster, pickIndex);
 }
 
-export function createSelectionController({ camera, xrControllers = [], getInteractiveState, onSelect, onClear }) {
+export function createSelectionController({ camera, xrControllers = [], getInteractiveState, onSelect, onClear, onBeforeXRSelect = null }) {
     const raycaster = new THREE.Raycaster();
     const pointer = new THREE.Vector2();
     const controllerDirection = new THREE.Vector3();
@@ -253,6 +253,8 @@ export function createSelectionController({ camera, xrControllers = [], getInter
     }
 
     function selectFromController(controller) {
+        if (onBeforeXRSelect?.(controller)) return;
+
         const raySource = controller.userData.ray ?? controller;
         controller.updateMatrixWorld(true);
         raySource.updateMatrixWorld(true);
