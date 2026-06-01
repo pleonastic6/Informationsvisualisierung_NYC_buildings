@@ -128,7 +128,7 @@ function makeLegendTexture({ state, open, minHeight }) {
         context.fillText(`Min: ${Math.round(minHeight)} m`, 24, 96);
 
         const colors = state.currentMode === 'era'
-            ? ['#8b6914', '#c45c1a', '#1a6fc4', '#1a9c4a', '#8b1ac4']
+            ? ['#7a405d', '#b64e7d', '#d85c98', '#f06ab4', '#ff8fd1']
             : ['#273f9f', '#1a9c8f', '#f0c04a', '#ff4ca6'];
         colors.forEach((color, index) => {
             context.fillStyle = color;
