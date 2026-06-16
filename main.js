@@ -6,6 +6,7 @@ import {
 } from './js/buildings.js';
 import { createControls } from './js/controls.js';
 import { createHoverController } from './js/interaction.js';
+import { createEventLogger } from './js/logging.js';
 import { createScene } from './js/scene.js';
 import { buildStreets } from './js/streets.js';
 import {
@@ -48,12 +49,14 @@ const state = {
     hoveredMapMeta: null,
     hoveredRankingItem: null,
     pinnedMapMeta: null,
-    searchEntries: []
+    searchEntries: [],
+    minHeightFilter: 0
 };
 
 const { scene, camera, renderer } = createScene();
 const controls = createControls(camera);
 const rankingLabels = createRankingLabelController({ camera, getState: () => state });
+const logger = createEventLogger({ getState: () => state });
 
 function getFocusTarget(meta) {
     return { x: meta.centerX, z: -meta.centerZ };
@@ -104,7 +107,7 @@ function createSearchEntries() {
         .sort((a, b) => b.height - a.height);
 }
 
-function focusBuilding(meta) {
+function focusBuilding(meta, source = 'unknown') {
     if (!meta) return;
     if (state.pinnedMapMeta && state.pinnedMapMeta !== meta && state.pinnedMapMeta !== state.hoveredMapMeta) {
         clearMapMetaHighlight(state.pinnedMapMeta);
@@ -119,6 +122,12 @@ function focusBuilding(meta) {
     controls.focusOnBuilding(meta, target);
     viewController.applyViewMode('map');
     setMapMetaHighlight(meta, true);
+    logger.log('building_focus', {
+        source,
+        bin: meta.bin ?? null,
+        name: meta.name ?? null,
+        height: meta.height
+    });
 }
 
 function updateVisibleStats() {
@@ -251,6 +260,7 @@ const modeController = createModeController({
         if (state.pinnedMapMeta) setMapMetaHighlight(state.pinnedMapMeta, true);
         clearHighlights();
         hideTooltip();
+        logger.log(`mode_${mode}`, { mode });
     }
 });
 
@@ -263,14 +273,24 @@ const viewController = createViewController({
         hideTooltip();
         controls.transitionToView(viewMode);
         viewController.applyViewMode(viewMode);
+        logger.log(viewMode === 'ranking' ? 'view_ranking' : 'view_map', { viewMode });
     },
     updateVisibleStats
 });
 
 const searchController = createSearchController({
     getSearchState: () => ({ searchEntries: state.searchEntries }),
+    onQuery: (query) => {
+        logger.log('search_query', { query });
+    },
     onSelect: (item) => {
-        focusBuilding(item);
+        logger.log('search_select', {
+            query: document.getElementById('building-search-input')?.value ?? '',
+            bin: item.bin ?? null,
+            name: item.name ?? null,
+            height: item.height
+        });
+        focusBuilding(item, 'search_select');
         searchController.setSelected(item);
     }
 });
@@ -286,6 +306,9 @@ bindHeightFilter(() => ({
     if (state.pinnedMapMeta) setMapMetaHighlight(state.pinnedMapMeta, true);
     hideTooltip();
     updateVisibleStats();
+}, (minHeight) => {
+    state.minHeightFilter = minHeight;
+    logger.log('filter_change', { minHeight });
 });
 
 createHoverController({
@@ -348,6 +371,11 @@ async function init() {
 
     setLegendForHeight(state.maxHeight);
     updateVisibleStats();
+    logger.log('session_ready', {
+        buildingCount: buildings.length,
+        maxHeight: state.maxHeight,
+        streetCount: state.allStats.streetCount
+    });
 
     setProgress(30, 'Geometrien aufbauen…');
     const buildingResult = await buildBuildings({

@@ -116,7 +116,7 @@ export function createViewController({ getState, setViewMode, updateVisibleStats
     };
 }
 
-export function bindHeightFilter(getFilterState, onAfterFilter) {
+export function bindHeightFilter(getFilterState, onAfterFilter, onChange = null) {
     const slider = document.getElementById('height-filter');
     const valueEl = document.getElementById('filter-val');
 
@@ -127,6 +127,7 @@ export function bindHeightFilter(getFilterState, onAfterFilter) {
         const { mesh, buildingMeta, sourceColors, rankingItems, currentMode } = getFilterState();
         applyMeshHeightFilter({ mesh, buildingMeta, minHeight, sourceColors });
         updateRankingView({ rankingItems, mode: currentMode, minHeight });
+        if (onChange) onChange(minHeight);
         onAfterFilter();
     });
 }
@@ -199,7 +200,7 @@ export function createRankingLabelController({ camera, getState }) {
     };
 }
 
-export function createSearchController({ getSearchState, onSelect }) {
+export function createSearchController({ getSearchState, onSelect, onQuery = null }) {
     const input = document.getElementById('building-search-input');
     const results = document.getElementById('building-search-results');
     const status = document.getElementById('building-search-status');
@@ -238,6 +239,7 @@ export function createSearchController({ getSearchState, onSelect }) {
     function updateResults() {
         const query = input.value.trim().toLowerCase();
         const { searchEntries } = getSearchState();
+        if (onQuery) onQuery(query);
         if (!query) return render([], '');
 
         const digitQuery = query.replace(/\s+/g, '');

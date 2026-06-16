@@ -126,6 +126,7 @@ canvas {
 #mode-bar,
 #view-bar,
 #legend,
+#study-panel,
 #filter-panel,
 #controls,
 #hover-tooltip,
@@ -170,6 +171,110 @@ canvas {
     background: var(--surface);
     backdrop-filter: blur(12px);
     box-shadow: var(--shadow);
+}
+
+#study-panel {
+    position: fixed;
+    top: 286px;
+    left: 32px;
+    z-index: 10;
+    width: 320px;
+    padding: 14px 16px;
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    background: var(--surface);
+    backdrop-filter: blur(12px);
+    box-shadow: var(--shadow);
+}
+
+.study-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: center;
+}
+
+.study-title {
+    font-family: "Ndot-55", sans-serif;
+    font-size: 10px;
+    letter-spacing: .2em;
+    text-transform: uppercase;
+}
+
+.study-count,
+.study-meta {
+    font-size: 8px;
+    letter-spacing: .16em;
+    color: var(--muted);
+}
+
+.study-meta {
+    margin-top: 10px;
+    word-break: break-all;
+}
+
+.study-task-status {
+    margin-top: 10px;
+    font-size: 8px;
+    letter-spacing: .16em;
+    color: var(--muted);
+    text-transform: uppercase;
+}
+
+.study-task-status span {
+    color: var(--text);
+}
+
+#log-task-id {
+    width: 100%;
+    margin-top: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text);
+    font-family: "NType82", monospace;
+    font-size: 11px;
+    letter-spacing: .08em;
+    padding: 11px 12px;
+    border-radius: 12px;
+    outline: none;
+}
+
+#log-task-id:focus {
+    border-color: rgba(255, 76, 166, 0.7);
+    box-shadow: 0 0 0 1px rgba(255, 76, 166, 0.24);
+}
+
+.study-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.study-btn {
+    flex: 1;
+    border: 1px solid rgba(255, 76, 166, 0.38);
+    border-radius: 12px;
+    background: rgba(255, 76, 166, 0.12);
+    color: var(--text);
+    font-family: "NType82", monospace;
+    font-size: 9px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    padding: 10px 12px;
+    cursor: pointer;
+    transition: background .15s ease, border-color .15s ease, transform .15s ease;
+}
+
+.study-btn:hover {
+    background: rgba(255, 76, 166, 0.18);
+    border-color: rgba(255, 76, 166, 0.6);
+    transform: translateY(-1px);
+}
+
+.study-btn-muted {
+    border-color: rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--muted);
 }
 
 .search-label {
