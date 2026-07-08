@@ -23,6 +23,8 @@ export function createEventLogger({ getState }) {
     let taskActive = false;
     let taskStartedAt = null;
 
+    const studyPanel = document.getElementById('study-panel');
+    const studyToggle = document.getElementById('study-toggle');
     const sessionIdEl = document.getElementById('log-session-id');
     const eventCountEl = document.getElementById('log-event-count');
     const taskStatusEl = document.getElementById('log-task-status');
@@ -31,6 +33,11 @@ export function createEventLogger({ getState }) {
     const taskStartButton = document.getElementById('log-task-start-btn');
     const taskEndButton = document.getElementById('log-task-end-btn');
     const taskInput = document.getElementById('log-task-id');
+
+    function setPanelOpen(open) {
+        if (studyPanel) studyPanel.hidden = !open;
+        if (studyToggle) studyToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    }
 
     function syncUi() {
         if (sessionIdEl) sessionIdEl.textContent = sessionId;
@@ -141,11 +148,18 @@ export function createEventLogger({ getState }) {
         });
     }
 
+    if (studyToggle) {
+        studyToggle.addEventListener('click', () => {
+            setPanelOpen(studyPanel?.hidden ?? true);
+        });
+    }
+
     window.addEventListener('beforeunload', () => {
         if (taskActive) endTask();
         log('session_end', { reason: 'beforeunload' });
     });
 
+    setPanelOpen(false);
     syncUi();
     log('session_start', {});
 
