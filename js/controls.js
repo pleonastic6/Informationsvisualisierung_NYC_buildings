@@ -157,6 +157,14 @@ export function createControls(camera, interactionElement = document.body) {
         camera.lookAt(camPos.clone().addScaledVector(dir, 100));
     }
 
+    function setMovementKey(key, pressed) {
+        keys[key] = pressed;
+        if (pressed) {
+            stopCinematic();
+            markInteraction();
+        }
+    }
+
     document.addEventListener('keydown', (event) => {
         if (isTypingTarget(event.target)) return;
         stopCinematic();
@@ -292,6 +300,23 @@ export function createControls(camera, interactionElement = document.body) {
         pinchMidpoint = null;
         pinchDistance = 0;
     }, { passive: true });
+
+    document.querySelectorAll('.pad-btn[data-key]').forEach((button) => {
+        const key = button.dataset.key;
+        const press = (event) => {
+            event.preventDefault();
+            setMovementKey(key, true);
+        };
+        const release = (event) => {
+            event.preventDefault();
+            setMovementKey(key, false);
+        };
+
+        button.addEventListener('pointerdown', press);
+        button.addEventListener('pointerup', release);
+        button.addEventListener('pointerleave', release);
+        button.addEventListener('pointercancel', release);
+    });
 
     updateCamera();
 
