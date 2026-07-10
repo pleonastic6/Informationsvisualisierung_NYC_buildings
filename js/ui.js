@@ -150,6 +150,122 @@ export function hideTooltip() {
     document.getElementById('hover-tooltip').style.opacity = '0';
 }
 
+export function initMobileDrawerUi() {
+    const dock = document.getElementById('mobile-dock');
+    const backdrop = document.getElementById('mobile-panel-backdrop');
+    const dockButtons = Array.from(document.querySelectorAll('.mobile-dock-btn'));
+    const panelIds = ['search-panel', 'hud-tr', 'legend', 'study-panel'];
+    const media = window.matchMedia('(max-width: 640px)');
+    let activePanelId = null;
+
+    if (!dock || !backdrop || !dockButtons.length) return;
+
+    function isMobile() {
+        return media.matches;
+    }
+
+    function syncButtonState() {
+        dockButtons.forEach((button) => {
+            const isActive = button.dataset.target === activePanelId;
+            button.classList.toggle('active', isActive);
+            button.setAttribute('aria-expanded', isActive ? 'true' : 'false');
+        });
+    }
+
+    function showPanel(panelId) {
+        const panel = document.getElementById(panelId);
+        if (!panel) return;
+        panel.hidden = false;
+        panel.dataset.mobileOpen = 'true';
+    }
+
+    function hidePanel(panelId) {
+        const panel = document.getElementById(panelId);
+        if (!panel) return;
+        panel.dataset.mobileOpen = 'false';
+        if (panelId === 'study-panel') panel.hidden = true;
+    }
+
+    function closeAllPanels() {
+        activePanelId = null;
+        panelIds.forEach(hidePanel);
+        backdrop.hidden = true;
+        backdrop.dataset.open = 'false';
+        syncButtonState();
+    }
+
+    function openPanel(panelId) {
+        panelIds.forEach((id) => {
+            if (id !== panelId) hidePanel(id);
+        });
+        activePanelId = panelId;
+        showPanel(panelId);
+        backdrop.hidden = false;
+        backdrop.dataset.open = 'true';
+        syncButtonState();
+    }
+
+    function togglePanel(panelId) {
+        if (!isMobile()) return;
+        if (activePanelId === panelId) {
+            closeAllPanels();
+            return;
+        }
+        openPanel(panelId);
+    }
+
+    dockButtons.forEach((button) => {
+        button.addEventListener('click', () => {
+            togglePanel(button.dataset.target);
+        });
+    });
+
+    backdrop.addEventListener('click', closeAllPanels);
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') closeAllPanels();
+    });
+
+    document.addEventListener('click', (event) => {
+        if (!isMobile() || !activePanelId) return;
+        const activePanel = document.getElementById(activePanelId);
+        if (!activePanel) return;
+        const inPanel = activePanel.contains(event.target);
+        const inDock = dock.contains(event.target);
+        if (!inPanel && !inDock) closeAllPanels();
+    });
+
+    function applyViewportMode() {
+        if (isMobile()) {
+            closeAllPanels();
+            dock.hidden = false;
+        } else {
+            dock.hidden = true;
+            backdrop.hidden = true;
+            backdrop.dataset.open = 'false';
+            panelIds.forEach((panelId) => {
+                const panel = document.getElementById(panelId);
+                if (!panel) return;
+                panel.dataset.mobileOpen = 'false';
+                if (panelId === 'study-panel') panel.hidden = true;
+                else panel.hidden = false;
+            });
+            activePanelId = null;
+            syncButtonState();
+        }
+    }
+
+    if (typeof media.addEventListener === 'function') media.addEventListener('change', applyViewportMode);
+    else if (typeof media.addListener === 'function') media.addListener(applyViewportMode);
+
+    applyViewportMode();
+
+    return {
+        closeAll: closeAllPanels,
+        openPanel
+    };
+}
+
 export function createRankingLabelController({ camera, getState }) {
     const root = document.createElement('div');
     root.id = 'ranking-labels';

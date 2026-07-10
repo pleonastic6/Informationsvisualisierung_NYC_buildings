@@ -18,6 +18,7 @@ import {
     finishLoading,
     getMinHeightFilter,
     hideTooltip,
+    initMobileDrawerUi,
     setLegendForHeight,
     setProgress,
     setSliderMax,
@@ -57,6 +58,7 @@ const { scene, camera, renderer } = createScene();
 const controls = createControls(camera, renderer.domElement);
 const rankingLabels = createRankingLabelController({ camera, getState: () => state });
 const logger = createEventLogger({ getState: () => state });
+initMobileDrawerUi();
 
 function getFocusTarget(meta) {
     return { x: meta.centerX, z: -meta.centerZ };
