@@ -28,10 +28,13 @@ function anglesFromLookAt(position, target) {
     };
 }
 
-export function createControls(camera) {
+export function createControls(camera, interactionElement = document.body) {
     const keys = {};
     let mouseDown = false;
     let lastMouse = { x: 0, y: 0 };
+    let activeTouchMode = null;
+    let pinchDistance = 0;
+    let pinchMidpoint = null;
 
     let camYaw = MAP_VIEW.yaw;
     let camPitch = MAP_VIEW.pitch;
@@ -91,6 +94,24 @@ export function createControls(camera) {
         if (!target) return false;
         const tag = target.tagName?.toLowerCase();
         return tag === 'input' || tag === 'textarea' || target.isContentEditable;
+    }
+
+    function isUiTarget(target) {
+        if (!target || typeof target.closest !== 'function') return false;
+        return Boolean(target.closest(
+            '#search-panel, #study-toggle, #study-panel, #hud-tr, #mode-bar, #view-bar, #legend, #filter-panel, #controls, #hover-tooltip, #ranking-labels, button, input, textarea, label'
+        ));
+    }
+
+    function touchDistance(touchA, touchB) {
+        return Math.hypot(touchA.clientX - touchB.clientX, touchA.clientY - touchB.clientY);
+    }
+
+    function touchMidpoint(touchA, touchB) {
+        return {
+            x: (touchA.clientX + touchB.clientX) / 2,
+            y: (touchA.clientY + touchB.clientY) / 2
+        };
     }
 
     function easeInOutCubic(t) {
@@ -191,6 +212,86 @@ export function createControls(camera) {
     });
 
     document.addEventListener('contextmenu', (event) => event.preventDefault());
+
+    interactionElement.addEventListener('touchstart', (event) => {
+        if (isUiTarget(event.target) || isTypingTarget(event.target)) return;
+        stopCinematic();
+        markInteraction();
+
+        if (event.touches.length === 1) {
+            activeTouchMode = 'rotate';
+            const touch = event.touches[0];
+            lastMouse = { x: touch.clientX, y: touch.clientY };
+        } else if (event.touches.length >= 2) {
+            activeTouchMode = 'pinch';
+            const [touchA, touchB] = event.touches;
+            pinchDistance = touchDistance(touchA, touchB);
+            pinchMidpoint = touchMidpoint(touchA, touchB);
+        }
+    }, { passive: true });
+
+    interactionElement.addEventListener('touchmove', (event) => {
+        if (isUiTarget(event.target) || isTypingTarget(event.target)) return;
+        if (!activeTouchMode) return;
+
+        stopCinematic();
+        markInteraction();
+
+        if (event.touches.length === 1 && activeTouchMode === 'rotate') {
+            event.preventDefault();
+            const touch = event.touches[0];
+            const dx = touch.clientX - lastMouse.x;
+            const dy = touch.clientY - lastMouse.y;
+            lastMouse = { x: touch.clientX, y: touch.clientY };
+            camYaw -= dx * CAM_SENSITIVITY;
+            camPitch = Math.max(-1.4, Math.min(1.4, camPitch + dy * CAM_SENSITIVITY));
+            return;
+        }
+
+        if (event.touches.length >= 2) {
+            event.preventDefault();
+            activeTouchMode = 'pinch';
+            const [touchA, touchB] = event.touches;
+            const distance = touchDistance(touchA, touchB);
+            const delta = distance - pinchDistance;
+            pinchDistance = distance;
+            camPos.addScaledVector(getDirection(), -delta * 0.45);
+            camPos.y = Math.max(8, camPos.y);
+
+            const midpoint = touchMidpoint(touchA, touchB);
+            if (pinchMidpoint) {
+                const dx = midpoint.x - pinchMidpoint.x;
+                const dy = midpoint.y - pinchMidpoint.y;
+                camYaw -= dx * CAM_SENSITIVITY * 0.35;
+                camPos.y = Math.max(8, camPos.y - dy * 0.08);
+            }
+            pinchMidpoint = midpoint;
+        }
+    }, { passive: false });
+
+    interactionElement.addEventListener('touchend', (event) => {
+        markInteraction();
+        if (event.touches.length === 0) {
+            activeTouchMode = null;
+            pinchMidpoint = null;
+            pinchDistance = 0;
+            return;
+        }
+
+        if (event.touches.length === 1) {
+            activeTouchMode = 'rotate';
+            const touch = event.touches[0];
+            lastMouse = { x: touch.clientX, y: touch.clientY };
+            pinchMidpoint = null;
+            pinchDistance = 0;
+        }
+    }, { passive: true });
+
+    interactionElement.addEventListener('touchcancel', () => {
+        activeTouchMode = null;
+        pinchMidpoint = null;
+        pinchDistance = 0;
+    }, { passive: true });
 
     updateCamera();
 

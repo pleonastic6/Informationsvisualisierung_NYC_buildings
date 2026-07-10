@@ -24,10 +24,12 @@ body {
     font-family: "NType82", monospace;
     overflow: hidden;
     user-select: none;
+    overscroll-behavior: none;
 }
 
 canvas {
     display: block;
+    touch-action: none;
 }
 
 .bg {
@@ -670,4 +672,236 @@ input[type=range]::-webkit-slider-thumb {
 
 .tooltip-row span {
     color: var(--text);
+}
+
+@media (max-width: 900px) {
+    #loading-title {
+        font-size: 22px;
+        letter-spacing: .22em;
+        text-align: center;
+    }
+
+    #loading-sub {
+        margin-bottom: 32px;
+        padding: 0 24px;
+        text-align: center;
+        letter-spacing: .24em;
+        line-height: 1.6;
+    }
+
+    #loading-bar-wrap {
+        width: min(280px, calc(100vw - 56px));
+    }
+
+    #hud-tl {
+        top: 16px;
+        left: 16px;
+        max-width: calc(100vw - 180px);
+    }
+
+    #hud-tl h1 {
+        font-size: 11px;
+        letter-spacing: .22em;
+    }
+
+    #hud-tl .sub {
+        font-size: 8px;
+        letter-spacing: .13em;
+    }
+
+    #hud-tr {
+        top: 16px;
+        right: 16px;
+        min-width: 132px;
+        padding: 10px 12px;
+    }
+
+    .stat-row {
+        font-size: 8px;
+        letter-spacing: .11em;
+        line-height: 1.7;
+    }
+
+    #search-panel {
+        top: 86px;
+        left: 16px;
+        right: 16px;
+        width: auto;
+        max-height: min(42vh, 360px);
+        overflow: auto;
+        padding: 12px 14px;
+    }
+
+    #study-toggle {
+        top: auto;
+        left: 16px;
+        right: 16px;
+        bottom: 252px;
+        padding: 12px 14px;
+    }
+
+    #study-panel {
+        top: auto;
+        left: 16px;
+        right: 16px;
+        bottom: 304px;
+        width: auto;
+        max-height: min(34vh, 300px);
+        overflow: auto;
+        padding: 12px 14px;
+    }
+
+    #mode-bar,
+    #view-bar {
+        left: 16px;
+        right: 16px;
+        transform: none;
+        justify-content: stretch;
+        gap: 8px;
+    }
+
+    #mode-bar {
+        top: auto;
+        bottom: 150px;
+    }
+
+    #view-bar {
+        top: auto;
+        bottom: 102px;
+    }
+
+    .mode-btn,
+    .view-btn {
+        flex: 1 1 0;
+        min-width: 0;
+        padding: 12px 10px;
+        font-size: 8px;
+        letter-spacing: .14em;
+    }
+
+    #filter-panel {
+        left: 16px;
+        right: 16px;
+        bottom: 16px;
+        transform: none;
+        gap: 10px;
+        padding: 12px 14px;
+    }
+
+    .filter-label,
+    #filter-val {
+        font-size: 8px;
+        letter-spacing: .11em;
+    }
+
+    input[type=range] {
+        width: 100%;
+        min-width: 0;
+        flex: 1 1 auto;
+    }
+
+    #legend {
+        left: 16px;
+        bottom: 200px;
+        padding: 12px 14px;
+        max-width: min(220px, calc(100vw - 32px));
+    }
+
+    #legend-range {
+        width: 150px;
+        max-width: 100%;
+    }
+
+    #legend-bar {
+        width: 150px;
+        max-width: 100%;
+    }
+
+    #controls {
+        right: 16px;
+        bottom: 200px;
+        padding: 10px 12px;
+        max-width: min(210px, calc(100vw - 32px));
+    }
+
+    .ctrl,
+    .leg-title,
+    .era-item,
+    .tooltip-row {
+        font-size: 8px;
+        letter-spacing: .1em;
+    }
+
+    .tooltip-title,
+    .ranking-label-rank {
+        font-size: 9px;
+    }
+
+    .ranking-label-height {
+        font-size: 7px;
+    }
+}
+
+@media (max-width: 640px) {
+    #hud-tl {
+        max-width: calc(100vw - 32px);
+    }
+
+    #hud-tr {
+        top: 86px;
+        right: 16px;
+        min-width: 0;
+        width: auto;
+        padding: 8px 10px;
+    }
+
+    #search-panel {
+        top: 136px;
+        max-height: min(36vh, 300px);
+    }
+
+    #study-toggle {
+        bottom: 214px;
+    }
+
+    #study-panel {
+        bottom: 266px;
+    }
+
+    #mode-bar {
+        bottom: 124px;
+    }
+
+    #view-bar {
+        bottom: 76px;
+    }
+
+    #filter-panel {
+        bottom: 16px;
+        flex-wrap: wrap;
+        justify-content: space-between;
+    }
+
+    .filter-label {
+        width: 100%;
+    }
+
+    #filter-val {
+        min-width: 0;
+    }
+
+    #legend {
+        right: 16px;
+        bottom: 264px;
+        max-width: none;
+    }
+
+    #controls {
+        display: none;
+    }
+
+    #hover-tooltip {
+        min-width: 0;
+        max-width: min(220px, calc(100vw - 24px));
+    }
 }

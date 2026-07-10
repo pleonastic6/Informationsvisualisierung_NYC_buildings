@@ -54,7 +54,7 @@ const state = {
 };
 
 const { scene, camera, renderer } = createScene();
-const controls = createControls(camera);
+const controls = createControls(camera, renderer.domElement);
 const rankingLabels = createRankingLabelController({ camera, getState: () => state });
 const logger = createEventLogger({ getState: () => state });
 
