@@ -6,9 +6,9 @@ import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-LEGACY_BUILDINGS_PATH = ROOT / 'buildings.json'
-FOOTPRINTS_PATH = ROOT / 'archive' / 'building_footprints.csv'
-OUTPUT_PATH = ROOT / 'buildings.json'
+LEGACY_BUILDINGS_PATH = ROOT / 'src' / 'frontend' / 'buildings.json'
+FOOTPRINTS_PATH = ROOT / 'data' / 'raw' / 'building_footprints.csv'
+OUTPUT_PATH = ROOT / 'src' / 'frontend' / 'buildings.json'
 
 HEIGHT_TOLERANCE = 0.2
 GROUND_TOLERANCE = 0.2

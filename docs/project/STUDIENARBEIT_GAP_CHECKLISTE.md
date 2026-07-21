@@ -77,7 +77,7 @@ Schon da:
 Beleg im Repo:
 - [index.html](/root/.openclaw/workspace/Informationsvisualisierung_NYC_buildings/index.html:29)
 - [main.js](/root/.openclaw/workspace/Informationsvisualisierung_NYC_buildings/main.js:27)
-- [ui.js](/root/.openclaw/workspace/Informationsvisualisierung_NYC_buildings/js/ui.js:71)
+- [`ui.js`](../../src/frontend/js/ui.js)
 
 Was noch fehlt, um den Prototyp fuer eine Studie tauglich zu machen:
 - Event-Logging fuer relevante Interaktionen

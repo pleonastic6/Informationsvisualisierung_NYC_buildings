@@ -7,9 +7,9 @@ from collections import defaultdict
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-BUILDINGS_PATH = ROOT / 'buildings.json'
-FOOTPRINTS_PATH = ROOT / 'archive' / 'building_footprints.csv'
-OUTPUT_PATH = ROOT / 'building-metadata.json'
+BUILDINGS_PATH = ROOT / 'src' / 'frontend' / 'buildings.json'
+FOOTPRINTS_PATH = ROOT / 'data' / 'raw' / 'building_footprints.csv'
+OUTPUT_PATH = ROOT / 'src' / 'frontend' / 'building-metadata.json'
 GEOM_PATTERN = re.compile(r'(-?\d+\.\d+) (-?\d+\.\d+)')
 HEIGHT_TOLERANCE = 0.2
 GROUND_TOLERANCE = 0.2
