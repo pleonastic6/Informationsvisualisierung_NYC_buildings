@@ -115,7 +115,8 @@ Die Anwendung ist ohne Build-Schritt als statische Website umgesetzt:
 ```text
 data/raw/             Rohdaten und Daten-Dokumentation
 docs/user-study/      Studienplanung, EEG-Report, Grafik und Video
+index.html            Einstiegspunkt für GitHub Pages
 presentation/         Präsentationsmaterial
-src/frontend/         lauffähige Webanwendung und aufbereitete Daten
+src/frontend/         Anwendungsdateien und aufbereitete Daten
 tools/                Skripte zur Datenaufbereitung
 ```
