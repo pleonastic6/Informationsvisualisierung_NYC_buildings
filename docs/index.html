@@ -8,6 +8,9 @@
     <link rel="stylesheet" href="styles.css"/>
 </head>
 <body>
+<div class="bg"></div>
+<div class="grain"></div>
+<div class="dots"></div>
 
 <!-- Loading Screen -->
 <div id="loading">
@@ -21,6 +24,34 @@
 <div id="hud-tl">
     <h1>NYC — Manhattan</h1>
     <div class="sub">Building Heights Visualization</div>
+</div>
+
+<div id="search-panel">
+    <label class="search-label" for="building-search-input">Gebäude suchen</label>
+    <input id="building-search-input" type="text" placeholder="BIN / BID oder Name" autocomplete="off"/>
+    <div id="building-search-status">Suche per BIN oder Name</div>
+    <div id="building-search-results"></div>
+</div>
+
+<button id="study-toggle" type="button" aria-expanded="false" aria-controls="study-panel">Study Log</button>
+
+<div id="study-panel" hidden>
+    <div class="study-head">
+        <span class="study-title">Study Log</span>
+        <span class="study-count"><span id="log-event-count">0</span> Events</span>
+    </div>
+    <div class="study-meta">Session <span id="log-session-id">—</span></div>
+    <label class="search-label" for="log-task-id">Task-ID</label>
+    <input id="log-task-id" type="text" placeholder="z. B. task-1" autocomplete="off"/>
+    <div class="study-task-status">Status <span id="log-task-status">idle</span></div>
+    <div class="study-actions">
+        <button id="log-task-start-btn" class="study-btn" type="button">Task Start</button>
+        <button id="log-task-end-btn" class="study-btn study-btn-muted" type="button">Task End</button>
+    </div>
+    <div class="study-actions">
+        <button id="log-export-btn" class="study-btn" type="button">JSON Export</button>
+        <button id="log-reset-btn" class="study-btn study-btn-muted" type="button">Reset</button>
+    </div>
 </div>
 
 <!-- HUD Top Right -->
@@ -38,6 +69,12 @@
     <button class="mode-btn" data-mode="ground">Meereshöhe</button>
 </div>
 
+<!-- View Bar -->
+<div id="view-bar">
+    <button class="view-btn active" data-view="map">Map</button>
+    <button class="view-btn" data-view="ranking">Top 100 Grid</button>
+</div>
+
 <!-- Legend -->
 <div id="legend">
     <div id="height-legend">
@@ -47,12 +84,12 @@
     </div>
     <div id="era-legend">
         <div class="leg-title">Baujahr</div>
-        <div class="era-item"><div class="era-swatch" style="background:#8b6914"></div><span>Vor 1900</span></div>
-        <div class="era-item"><div class="era-swatch" style="background:#c45c1a"></div><span>1900–1939</span></div>
-        <div class="era-item"><div class="era-swatch" style="background:#1a6fc4"></div><span>1940–1969</span></div>
-        <div class="era-item"><div class="era-swatch" style="background:#1a9c4a"></div><span>1970–1999</span></div>
-        <div class="era-item"><div class="era-swatch" style="background:#8b1ac4"></div><span>2000+</span></div>
-        <div class="era-item"><div class="era-swatch" style="background:#2a3044"></div><span>Unbekannt</span></div>
+        <div class="era-item"><div class="era-swatch" style="background:#7c4a03"></div><span>Vor 1900</span></div>
+        <div class="era-item"><div class="era-swatch" style="background:#c2410c"></div><span>1900–1939</span></div>
+        <div class="era-item"><div class="era-swatch" style="background:#ca8a04"></div><span>1940–1969</span></div>
+        <div class="era-item"><div class="era-swatch" style="background:#0ea5a4"></div><span>1970–1999</span></div>
+        <div class="era-item"><div class="era-swatch" style="background:#2563eb"></div><span>2000+</span></div>
+        <div class="era-item"><div class="era-swatch" style="background:#4b5563"></div><span>Unbekannt</span></div>
     </div>
 </div>
 
@@ -65,10 +102,19 @@
 
 <!-- Controls -->
 <div id="controls">
+    <div class="ctrl">Drag — Drehen</div>
+    <div class="ctrl">Pinch / Scroll — Zoom</div>
     <div class="ctrl">WASD — Bewegen</div>
     <div class="ctrl">Q / E — Hoch / Runter</div>
-    <div class="ctrl">Maus halten — Drehen</div>
-    <div class="ctrl">Scroll — Zoom</div>
+</div>
+
+<div id="hover-tooltip"></div>
+
+<div id="mobile-control-pad" aria-label="Mobile Steuerkreuz">
+    <button class="pad-btn pad-up" type="button" data-key="w" aria-label="Vor">▲</button>
+    <button class="pad-btn pad-left" type="button" data-key="a" aria-label="Links">◀</button>
+    <button class="pad-btn pad-right" type="button" data-key="d" aria-label="Rechts">▶</button>
+    <button class="pad-btn pad-down" type="button" data-key="s" aria-label="Zurück">▼</button>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
